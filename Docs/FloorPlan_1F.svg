@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 520" width="680" height="520" role="img">
+<title>美术馆一层俯视图</title>
+<desc>一层包含接待大厅、油画厅、雕塑厅、楼梯厅、服装厅与配电间。哭泣天使位于雕塑厅正中央，四角各一件雕塑；服装厅三面墙悬挂服装；三个人偶各有独立的往返循环路线。</desc>
+<defs>
+<marker id="a1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#A32D2D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+<marker id="b1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#185FA5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+
+<rect x="0" y="0" width="680" height="520" fill="#FAF9F7"/>
+<text x="40" y="26" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#2C2C2A">1F · 40 × 26 m</text>
+<text x="240" y="26" font-family="Helvetica,Arial,sans-serif" font-size="12" fill="#6B7280">接待 → 油画 → 雕塑 → 楼梯（服装厅为任务区）</text>
+
+<rect x="40" y="44" width="195" height="390" rx="6" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.8"/>
+<rect x="235" y="44" width="195" height="180" rx="6" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.8"/>
+<rect x="235" y="224" width="195" height="75" rx="6" fill="#F1EFE8" stroke="#B4B2A9" stroke-width="0.8"/>
+<rect x="235" y="299" width="195" height="135" rx="6" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.8"/>
+<rect x="430" y="44" width="210" height="390" rx="6" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.8"/>
+
+<text x="52" y="66" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="bold" fill="#2C2C2A">油画厅</text>
+<text x="52" y="82" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#888780">13 × 26 m · 7 幅</text>
+<text x="247" y="118" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="bold" fill="#2C2C2A">雕塑厅</text>
+<text x="247" y="134" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#888780">13 × 12 m · 天窗 · 四角各一件</text>
+<text x="247" y="244" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="bold" fill="#2C2C2A">楼梯厅</text>
+<text x="247" y="288" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#888780">上二楼</text>
+<text x="247" y="321" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="bold" fill="#2C2C2A">接待大厅</text>
+<text x="247" y="337" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#888780">前台 · 电话 · 登记簿</text>
+<text x="442" y="66" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="bold" fill="#2C2C2A">服装厅</text>
+<text x="442" y="82" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#888780">14 × 26 m · 三面墙挂衣 · 10 个人台</text>
+
+<rect x="300" y="44" width="74" height="48" rx="3" fill="#F1EFE8" stroke="#B4B2A9" stroke-width="0.8"/>
+<text x="337" y="63" font-family="Helvetica,Arial,sans-serif" font-size="10" fill="#5F5E5A" text-anchor="middle">配电间</text>
+<text x="337" y="79" font-family="Helvetica,Arial,sans-serif" font-size="10" fill="#5F5E5A" text-anchor="middle">B 保安柜</text>
+
+<circle cx="50" cy="106" r="4" fill="#444441"/>
+<circle cx="50" cy="196" r="4" fill="#444441"/>
+<circle cx="50" cy="286" r="4" fill="#444441"/>
+<circle cx="50" cy="376" r="4" fill="#444441"/>
+<circle cx="225" cy="146" r="4" fill="#444441"/>
+<circle cx="225" cy="246" r="4" fill="#444441"/>
+<circle cx="225" cy="346" r="4" fill="#444441"/>
+<text x="52" y="406" font-family="Helvetica,Arial,sans-serif" font-size="10" fill="#888780">两侧长墙挂大画</text>
+
+<circle cx="335" cy="152" r="10" fill="#FAEEDA" stroke="#854F0B" stroke-width="1.2"/>
+<text x="335" y="156" font-family="Helvetica,Arial,sans-serif" font-size="10" fill="#854F0B" text-anchor="middle">天</text>
+<text x="335" y="182" font-family="Helvetica,Arial,sans-serif" font-size="10" fill="#854F0B" text-anchor="middle">正中央</text>
+<circle cx="258" cy="70" r="5" fill="#444441"/>
+<circle cx="414" cy="70" r="5" fill="#444441"/>
+<circle cx="258" cy="206" r="5" fill="#444441"/>
+<circle cx="414" cy="206" r="5" fill="#444441"/>
+<text x="247" y="196" font-family="Helvetica,Arial,sans-serif" font-size="10" fill="#888780">四角雕塑 ×4</text>
+
+<rect x="470" y="50" width="22" height="4" fill="#C9B8A8"/>
+<rect x="512" y="50" width="22" height="4" fill="#C9B8A8"/>
+<rect x="554" y="50" width="22" height="4" fill="#C9B8A8"/>
+<rect x="596" y="50" width="22" height="4" fill="#C9B8A8"/>
+<rect x="626" y="60" width="4" height="26" fill="#C9B8A8"/>
+<rect x="626" y="104" width="4" height="26" fill="#C9B8A8"/>
+<rect x="626" y="148" width="4" height="26" fill="#C9B8A8"/>
+<rect x="626" y="192" width="4" height="26" fill="#C9B8A8"/>
+<rect x="626" y="236" width="4" height="26" fill="#C9B8A8"/>
+<rect x="626" y="280" width="4" height="26" fill="#C9B8A8"/>
+<rect x="626" y="324" width="4" height="26" fill="#C9B8A8"/>
+<rect x="626" y="368" width="4" height="26" fill="#C9B8A8"/>
+<rect x="470" y="424" width="22" height="4" fill="#C9B8A8"/>
+<rect x="512" y="424" width="22" height="4" fill="#C9B8A8"/>
+<rect x="554" y="424" width="22" height="4" fill="#C9B8A8"/>
+<rect x="596" y="424" width="22" height="4" fill="#C9B8A8"/>
+<text x="442" y="200" font-family="Helvetica,Arial,sans-serif" font-size="10" fill="#8A7A66">← 入口侧不挂</text>
+
+<rect x="470" y="128" width="34" height="34" rx="3" fill="#F1EFE8" stroke="#B4B2A9" stroke-width="0.8"/>
+<rect x="545" y="240" width="34" height="34" rx="3" fill="#F1EFE8" stroke="#B4B2A9" stroke-width="0.8"/>
+<rect x="470" y="352" width="34" height="34" rx="3" fill="#F1EFE8" stroke="#B4B2A9" stroke-width="0.8"/>
+<text x="487" y="179" font-family="Helvetica,Arial,sans-serif" font-size="10" fill="#888780" text-anchor="middle">玻璃罩人台</text>
+
+<path d="M470 92 L578 92" fill="none" stroke="#185FA5" stroke-width="1.2" stroke-dasharray="5 3" marker-start="url(#b1)" marker-end="url(#b1)"/>
+<path d="M600 82 L600 358" fill="none" stroke="#185FA5" stroke-width="1.2" stroke-dasharray="5 3" marker-start="url(#b1)" marker-end="url(#b1)"/>
+<path d="M470 336 L582 336" fill="none" stroke="#185FA5" stroke-width="1.2" stroke-dasharray="5 3" marker-start="url(#b1)" marker-end="url(#b1)"/>
+<circle cx="524" cy="92" r="7" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+<circle cx="600" cy="220" r="7" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+<circle cx="526" cy="336" r="7" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+<text x="452" y="308" font-family="Helvetica,Arial,sans-serif" font-size="10" fill="#185FA5">人偶 ×3 · 各自往返</text>
+
+<rect x="598" y="386" width="26" height="26" rx="3" fill="#FBEAF0" stroke="#993556" stroke-width="0.8"/>
+<text x="611" y="428" font-family="Helvetica,Arial,sans-serif" font-size="10" fill="#993556" text-anchor="middle">小裙子</text>
+
+<rect x="296" y="318" width="72" height="26" rx="3" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.8"/>
+<text x="332" y="335" font-family="Helvetica,Arial,sans-serif" font-size="10" fill="#854F0B" text-anchor="middle">前台 · C</text>
+<path d="M300 434 L300 420 L364 420 L364 434" fill="none" stroke="#BA7517" stroke-width="3"/>
+<text x="332" y="452" font-family="Helvetica,Arial,sans-serif" font-size="10" fill="#BA7517" text-anchor="middle">正门（双开）</text>
+
+<path d="M332 396 L332 372" fill="none" stroke="#A32D2D" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#a1)"/>
+<path d="M296 366 L160 366 L138 330" fill="none" stroke="#A32D2D" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#a1)"/>
+<path d="M138 200 L138 160 L270 160" fill="none" stroke="#A32D2D" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#a1)"/>
+<path d="M360 168 L332 214" fill="none" stroke="#A32D2D" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#a1)"/>
+<path d="M310 288 L310 350" fill="none" stroke="#A32D2D" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#a1)"/>
+
+<circle cx="332" cy="406" r="10" fill="#FFFFFF" stroke="#A32D2D" stroke-width="1.2"/>
+<text x="332" y="410" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#A32D2D" text-anchor="middle">1</text>
+<circle cx="332" cy="356" r="10" fill="#FFFFFF" stroke="#A32D2D" stroke-width="1.2"/>
+<text x="332" y="360" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#A32D2D" text-anchor="middle">2</text>
+<circle cx="138" cy="232" r="10" fill="#FFFFFF" stroke="#A32D2D" stroke-width="1.2"/>
+<text x="138" y="236" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#A32D2D" text-anchor="middle">3</text>
+<circle cx="332" cy="236" r="10" fill="#FFFFFF" stroke="#A32D2D" stroke-width="1.2"/>
+<text x="332" y="240" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#A32D2D" text-anchor="middle">4</text>
+<circle cx="332" cy="266" r="10" fill="#FFFFFF" stroke="#A32D2D" stroke-width="1.2"/>
+<text x="332" y="270" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#A32D2D" text-anchor="middle">5</text>
+<circle cx="292" cy="376" r="10" fill="#FFFFFF" stroke="#A32D2D" stroke-width="1.2"/>
+<text x="292" y="380" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#A32D2D" text-anchor="middle">8</text>
+
+<circle cx="44" cy="470" r="9" fill="#FAEEDA" stroke="#854F0B" stroke-width="1.2"/>
+<text x="44" y="474" font-family="Helvetica,Arial,sans-serif" font-size="10" fill="#854F0B" text-anchor="middle">天</text>
+<text x="58" y="474" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#5F5E5A">哭泣天使</text>
+<circle cx="130" cy="470" r="7" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+<text x="142" y="474" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#5F5E5A">模特人偶</text>
+<rect x="212" y="463" width="6" height="14" fill="#C9B8A8"/>
+<text x="224" y="474" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#5F5E5A">悬挂服装</text>
+<circle cx="300" cy="470" r="4" fill="#444441"/>
+<text x="310" y="474" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#5F5E5A">雕塑 / 画作</text>
+
+<path d="M382 470 L408 470" fill="none" stroke="#A32D2D" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#a1)"/>
+<text x="414" y="474" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#5F5E5A">玩家路线</text>
+<path d="M482 470 L508 470" fill="none" stroke="#185FA5" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#b1)"/>
+<text x="514" y="474" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#5F5E5A">人偶往返</text>
+
+<text x="40" y="502" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#5F5E5A">B 工作卡（配电间保安柜）　　C 钥匙（前台抽屉）</text>
+</svg>

@@ -1,0 +1,571 @@
+using System.Collections.Generic;
+using System.IO;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.Rendering;
+
+namespace Ib.EditorTools
+{
+    /// <summary>
+    /// 程序生成的贴图和材质：抹灰墙、深色拼花木地板、旧石材、木线条、做旧描金……
+    /// 贴图第一次生成后存成 PNG（Assets/Art/Textures/Graybox），材质存进 Assets/Art/Materials/Finish；
+    /// 都是"已存在就不覆盖"，手调过的参数不会被重建冲掉。想重新生成就删掉对应文件。
+    /// 方块的 UV 在 AddBox 里改成世界坐标（米），所以材质 tiling = 1 / 贴图代表的米数，贴图不会随方块拉伸。
+    /// </summary>
+    public static partial class GrayboxBuilder
+    {
+        private const string TextureDir = "Assets/Art/Textures/Graybox";
+        private const string FinishDir = "Assets/Art/Materials/Finish";
+        private const int TexSize = 512;
+
+        private static readonly HashSet<Material> WorldUvMaterials = new HashSet<Material>();
+
+        private sealed class FinishSet
+        {
+            public Material PlasterBase;     // 墙体本身（门洞侧面、配电间、未开放区）
+            public Material Ceiling;
+            public Material Parquet;
+            public Material StoneTile;       // 接待厅 / 雕塑厅 / 楼梯厅 / 厕所地面
+            public Material StoneWorn;       // 楼梯、底座、柱础
+            public Material Marble;          // 柱身
+            public Material Trim;            // 踢脚、墙裙压条、门套、挂镜线
+            public Material Wainscot;        // 护墙板
+            public Material Beam;            // 天花梁
+            public Material Cornice;         // 檐口石膏线
+            public Material Gilt;            // 做旧描金（画框、栏杆柱头）
+            public Material Brass;
+            public Material MetalDark;       // 监控、通风口、梯子
+            public Material RedPaint;        // 灭火器
+            public Material Velvet;          // 隔离绳
+            public Material Canvas;          // 防尘布、画布
+            public Material CrateWood;
+            public Material Plastic;         // 清洁车
+            public Material WarningYellow;
+            public Material ExitSign;        // 绿色出口灯（自发光）
+            public Material LampShade;       // 吊灯罩（暖色自发光）
+            public Material RedLed;          // 监控指示灯
+            public Material Label;           // 展品说明牌
+            public Material GlassClear;      // 首饰柜玻璃罩（透明）
+            public Material DustMote;        // 浮尘粒子
+
+            public readonly Dictionary<string, Material> RoomSkins = new Dictionary<string, Material>();
+        }
+
+        private static FinishSet Finishes;
+
+        private static void LoadFinishes()
+        {
+            EnsureFolder(TextureDir);
+            EnsureFolder(FinishDir);
+            WorldUvMaterials.Clear();
+
+            Texture2D plaster = GetOrCreateTexture("T_Plaster", false, GenPlaster);
+            Texture2D plasterN = GetOrCreateTexture("T_Plaster_N", true, () => HeightToNormal(PlasterHeight(), 1.5f));
+            Texture2D parquet = GetOrCreateTexture("T_Parquet", false, GenParquet);
+            Texture2D parquetN = GetOrCreateTexture("T_Parquet_N", true, () => HeightToNormal(ParquetHeight(), 3f));
+            Texture2D stone = GetOrCreateTexture("T_StoneTile", false, GenStoneTile);
+            Texture2D stoneN = GetOrCreateTexture("T_StoneTile_N", true, () => HeightToNormal(StoneTileHeight(), 3f));
+            Texture2D worn = GetOrCreateTexture("T_StoneWorn", false, GenStoneWorn);
+            Texture2D grain = GetOrCreateTexture("T_WoodGrain", false, GenWoodGrain);
+            Texture2D mote = GetOrCreateTexture("T_DustMote", false, GenDustMote, 64, true);
+
+            FinishSet f = new FinishSet();
+
+            // 墙体本色：灰褐色旧抹灰。比之前的深灰亮，降饱和
+            f.PlasterBase = Lit("M_Plaster_Base", plaster, plasterN, new Color(0.52f, 0.50f, 0.46f), 0.10f, 2f);
+            f.Ceiling = Lit("M_Plaster_Ceiling", plaster, plasterN, new Color(0.34f, 0.33f, 0.31f), 0.05f, 3f);
+            f.Parquet = Lit("M_Parquet_Dark", parquet, parquetN, Color.white, 0.38f, 2f);
+            f.StoneTile = Lit("M_Stone_Tile", stone, stoneN, new Color(0.62f, 0.60f, 0.56f), 0.35f, 1.2f);
+            f.StoneWorn = Lit("M_Stone_Worn", worn, plasterN, new Color(0.72f, 0.70f, 0.66f), 0.18f, 1.5f);
+            f.Marble = Lit("M_Marble_Column", stone, null, new Color(0.92f, 0.90f, 0.86f), 0.55f, 0.6f, 0f, false);
+            f.Trim = Lit("M_Wood_Trim", grain, null, new Color(0.30f, 0.20f, 0.13f), 0.42f, 1f);
+            f.Wainscot = Lit("M_Wood_Wainscot", grain, null, new Color(0.24f, 0.16f, 0.10f), 0.35f, 1.5f);
+            f.Beam = Lit("M_Wood_Beam", grain, null, new Color(0.20f, 0.14f, 0.09f), 0.25f, 2f);
+            f.Cornice = Lit("M_Plaster_Cornice", plaster, null, new Color(0.50f, 0.48f, 0.43f), 0.12f, 2f);
+            f.Gilt = Lit("M_Gilt_Aged", plaster, null, new Color(0.55f, 0.42f, 0.20f), 0.45f, 1f, 0.75f, false);
+            f.Brass = Lit("M_Brass_Dull", null, null, new Color(0.62f, 0.48f, 0.24f), 0.55f, 1f, 0.85f, false);
+            f.MetalDark = Lit("M_Metal_Dark", null, null, new Color(0.10f, 0.10f, 0.11f), 0.40f, 1f, 0.6f, false);
+            f.RedPaint = Lit("M_Paint_Red", null, null, new Color(0.55f, 0.06f, 0.05f), 0.55f, 1f, 0f, false);
+            f.Velvet = Lit("M_Velvet_Rope", null, null, new Color(0.32f, 0.04f, 0.06f), 0.15f, 1f, 0f, false);
+            f.Canvas = Lit("M_Canvas_Drop", plaster, null, new Color(0.70f, 0.67f, 0.60f), 0.05f, 1f, 0f, false);
+            f.CrateWood = Lit("M_Wood_Crate", grain, null, new Color(0.55f, 0.43f, 0.30f), 0.15f, 1f);
+            f.Plastic = Lit("M_Plastic_Grey", null, null, new Color(0.28f, 0.32f, 0.36f), 0.35f, 1f, 0f, false);
+            f.WarningYellow = Lit("M_Paint_Yellow", null, null, new Color(0.85f, 0.65f, 0.08f), 0.4f, 1f, 0f, false);
+            f.Label = Lit("M_Label_Cream", null, null, new Color(0.80f, 0.77f, 0.68f), 0.2f, 1f, 0f, false);
+            f.ExitSign = Emissive("M_ExitSign_Green", new Color(0.10f, 0.85f, 0.35f), 2.2f);
+            f.LampShade = Emissive("M_LampShade_Warm", new Color(1f, 0.80f, 0.55f), 0.9f);
+            f.RedLed = Emissive("M_Led_Red", new Color(1f, 0.08f, 0.05f), 4f);
+            f.DustMote = DustMaterial(mote);
+            f.GlassClear = TransparentLit("M_Glass_Clear", new Color(0.85f, 0.92f, 0.95f, 0.16f), 0.95f);
+
+            // 每个房间一种墙色（护墙板以上那一层"墙纸"）：油画厅深牛血红、长廊深绿、服装厅暗青……都压暗、降饱和
+            f.RoomSkins["Reception"] = Lit("M_Wall_Reception", plaster, plasterN, new Color(0.58f, 0.54f, 0.47f), 0.10f, 2f);
+            f.RoomSkins["OilHall"] = Lit("M_Wall_OilHall", plaster, plasterN, new Color(0.40f, 0.12f, 0.10f), 0.10f, 2f);
+            f.RoomSkins["Sculpture"] = Lit("M_Wall_Sculpture", plaster, plasterN, new Color(0.56f, 0.55f, 0.52f), 0.08f, 2f);
+            f.RoomSkins["StairHall"] = Lit("M_Wall_StairHall", plaster, plasterN, new Color(0.38f, 0.41f, 0.37f), 0.10f, 2f);
+            f.RoomSkins["Costume"] = Lit("M_Wall_Costume", plaster, plasterN, new Color(0.13f, 0.23f, 0.24f), 0.10f, 2f);
+            f.RoomSkins["Gallery"] = Lit("M_Wall_Gallery", plaster, plasterN, new Color(0.15f, 0.25f, 0.18f), 0.10f, 2f);
+            f.RoomSkins["Family"] = Lit("M_Wall_Family", plaster, plasterN, new Color(0.44f, 0.37f, 0.35f), 0.10f, 2f);
+            f.RoomSkins["Duty"] = Lit("M_Wall_Duty", plaster, plasterN, new Color(0.50f, 0.47f, 0.40f), 0.10f, 2f);
+            f.RoomSkins["Toilet"] = Lit("M_Wall_Toilet", stone, stoneN, new Color(0.80f, 0.82f, 0.80f), 0.5f, 0.6f);
+
+            Finishes = f;
+        }
+
+        // ================================================================ 材质
+
+        private static Material Lit(string name, Texture2D albedo, Texture2D normal, Color color, float smoothness,
+            float metersPerTile, float metallic = 0f, bool worldUv = true)
+        {
+            string path = FinishDir + "/" + name + ".mat";
+            Material mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (mat == null)
+            {
+                mat = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = name };
+                mat.SetColor("_BaseColor", color);
+                mat.SetFloat("_Smoothness", smoothness);
+                mat.SetFloat("_Metallic", metallic);
+                if (albedo != null)
+                {
+                    mat.SetTexture("_BaseMap", albedo);
+                    mat.mainTextureScale = Vector2.one / metersPerTile;
+                }
+
+                if (normal != null)
+                {
+                    mat.SetTexture("_BumpMap", normal);
+                    mat.SetFloat("_BumpScale", 0.6f);
+                    mat.EnableKeyword("_NORMALMAP");
+                }
+
+                AssetDatabase.CreateAsset(mat, path);
+            }
+
+            if (worldUv)
+            {
+                WorldUvMaterials.Add(mat);
+            }
+
+            return mat;
+        }
+
+        private static Material Emissive(string name, Color color, float strength)
+        {
+            string path = FinishDir + "/" + name + ".mat";
+            Material mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (mat != null)
+            {
+                return mat;
+            }
+
+            mat = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = name };
+            mat.SetColor("_BaseColor", color * 0.5f);
+            mat.SetFloat("_Smoothness", 0.3f);
+            mat.EnableKeyword("_EMISSION");
+            mat.SetColor("_EmissionColor", color * strength);
+            mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+            AssetDatabase.CreateAsset(mat, path);
+            return mat;
+        }
+
+        private static Material TransparentLit(string name, Color color, float smoothness)
+        {
+            string path = FinishDir + "/" + name + ".mat";
+            Material mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (mat != null)
+            {
+                return mat;
+            }
+
+            mat = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = name };
+            mat.SetColor("_BaseColor", color);
+            mat.SetFloat("_Smoothness", smoothness);
+            MakeTransparent(mat);
+            AssetDatabase.CreateAsset(mat, path);
+            return mat;
+        }
+
+        private static void MakeTransparent(Material mat)
+        {
+            mat.SetFloat("_Surface", 1f);
+            mat.SetFloat("_Blend", 0f);
+            mat.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
+            mat.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
+            mat.SetFloat("_ZWrite", 0f);
+            mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            mat.SetOverrideTag("RenderType", "Transparent");
+            mat.renderQueue = (int)RenderQueue.Transparent;
+        }
+
+        /// <summary>
+        /// 浮尘：URP Particles/Lit + 透明混合。用受光的粒子而不是 Unlit：只在有光的地方看得见（光柱里最明显），
+        /// 黑处自然隐掉，不会像萤火虫一样自己发亮。
+        /// </summary>
+        private static Material DustMaterial(Texture2D sprite)
+        {
+            string path = FinishDir + "/M_DustMote.mat";
+            Material mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (mat != null)
+            {
+                return mat;
+            }
+
+            Shader shader = Shader.Find("Universal Render Pipeline/Particles/Lit");
+            if (shader == null)
+            {
+                shader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+            }
+
+            mat = new Material(shader) { name = "M_DustMote" };
+            mat.SetTexture("_BaseMap", sprite);
+            mat.SetColor("_BaseColor", new Color(1f, 0.98f, 0.94f, 0.7f));
+            mat.SetFloat("_Smoothness", 0f);
+            MakeTransparent(mat);
+            AssetDatabase.CreateAsset(mat, path);
+            return mat;
+        }
+
+        // ================================================================ 世界坐标 UV
+
+        /// <summary>
+        /// 把立方体的 UV 换成世界坐标（米）：侧面用 (水平, 高度)，顶/底面用 (x, z)。
+        /// 相邻两块墙的纹理能接上，长条方块上的贴图也不会被拉伸。网格随场景一起存（每块 24 个顶点）。
+        /// 只适用于没有旋转的方块（墙、地、梁、线条都是轴对齐的）。
+        /// </summary>
+        private static void ApplyWorldUv(GameObject go)
+        {
+            MeshFilter mf = go.GetComponent<MeshFilter>();
+            if (mf == null || mf.sharedMesh == null)
+            {
+                return;
+            }
+
+            Mesh src = mf.sharedMesh;
+            Vector3[] verts = src.vertices;
+            Vector3[] normals = src.normals;
+            Vector2[] uv = new Vector2[verts.Length];
+            Vector3 size = go.transform.lossyScale;
+            Vector3 center = go.transform.position;
+
+            for (int i = 0; i < verts.Length; i++)
+            {
+                Vector3 w = Vector3.Scale(verts[i], size) + center;
+                Vector3 n = normals[i];
+                if (Mathf.Abs(n.y) > 0.5f)
+                {
+                    uv[i] = new Vector2(w.x, w.z);
+                }
+                else if (Mathf.Abs(n.x) > 0.5f)
+                {
+                    uv[i] = new Vector2(n.x > 0f ? -w.z : w.z, w.y);
+                }
+                else
+                {
+                    uv[i] = new Vector2(n.z > 0f ? w.x : -w.x, w.y);
+                }
+            }
+
+            Mesh mesh = Object.Instantiate(src);
+            mesh.name = "WorldUV_" + go.name;
+            mesh.uv = uv;
+            mesh.RecalculateTangents();
+            mf.sharedMesh = mesh;
+        }
+
+        // ================================================================ 贴图生成
+
+        private delegate Color[] PixelGenerator();
+
+        private static Texture2D GetOrCreateTexture(string name, bool isNormal, PixelGenerator gen, int size = TexSize, bool alpha = false)
+        {
+            string path = TextureDir + "/" + name + ".png";
+            Texture2D existing = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            if (existing != null)
+            {
+                return existing;
+            }
+
+            Texture2D tex = new Texture2D(size, size, alpha ? TextureFormat.RGBA32 : TextureFormat.RGB24, false);
+            tex.SetPixels(gen());
+            tex.Apply();
+            File.WriteAllBytes(Path.Combine(Application.dataPath, "..", path), tex.EncodeToPNG());
+            Object.DestroyImmediate(tex);
+
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
+            TextureImporter importer = (TextureImporter)AssetImporter.GetAtPath(path);
+            importer.textureType = isNormal ? TextureImporterType.NormalMap : TextureImporterType.Default;
+            importer.wrapMode = alpha ? TextureWrapMode.Clamp : TextureWrapMode.Repeat;
+            importer.alphaIsTransparency = alpha;
+            importer.mipmapEnabled = true;
+            importer.anisoLevel = isNormal ? 1 : 4;
+            importer.SaveAndReimport();
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+        }
+
+        /// <summary>可平铺的分形噪声：四个角的噪声按位置双线性混合，接缝处值连续。</summary>
+        private static float Fbm(float u, float v, float scale, int octaves, float seed)
+        {
+            float sum = 0f;
+            float amp = 0.5f;
+            float freq = scale;
+            for (int o = 0; o < octaves; o++)
+            {
+                float a = Mathf.PerlinNoise(seed + u * freq, seed * 1.3f + v * freq);
+                float b = Mathf.PerlinNoise(seed + (u - 1f) * freq, seed * 1.3f + v * freq);
+                float c = Mathf.PerlinNoise(seed + u * freq, seed * 1.3f + (v - 1f) * freq);
+                float d = Mathf.PerlinNoise(seed + (u - 1f) * freq, seed * 1.3f + (v - 1f) * freq);
+                float n = Mathf.Lerp(Mathf.Lerp(a, b, u), Mathf.Lerp(c, d, u), v);
+                sum += n * amp;
+                amp *= 0.5f;
+                freq *= 2f;
+                seed += 17.31f;
+            }
+
+            return sum;
+        }
+
+        private static float Hash(int x, int y)
+        {
+            int h = x * 374761393 + y * 668265263;
+            h = (h ^ (h >> 13)) * 1274126177;
+            return ((h ^ (h >> 16)) & 0xFFFF) / 65535f;
+        }
+
+        // ---- 抹灰：大块明暗 + 细颗粒 + 几处水渍（越靠下越重）----
+
+        private static float[] PlasterHeight()
+        {
+            float[] h = new float[TexSize * TexSize];
+            for (int y = 0; y < TexSize; y++)
+            {
+                for (int x = 0; x < TexSize; x++)
+                {
+                    float u = x / (float)TexSize;
+                    float v = y / (float)TexSize;
+                    h[y * TexSize + x] = Fbm(u, v, 16f, 4, 3.7f);
+                }
+            }
+
+            return h;
+        }
+
+        private static Color[] GenPlaster()
+        {
+            Color[] c = new Color[TexSize * TexSize];
+            for (int y = 0; y < TexSize; y++)
+            {
+                for (int x = 0; x < TexSize; x++)
+                {
+                    float u = x / (float)TexSize;
+                    float v = y / (float)TexSize;
+                    float broad = Fbm(u, v, 3f, 3, 1.1f);
+                    float fine = Fbm(u, v, 40f, 2, 7.9f);
+                    float stain = Mathf.Clamp01((Fbm(u, v, 5f, 4, 21.4f) - 0.55f) * 6f);
+                    float tone = 0.86f + (broad - 0.5f) * 0.22f + (fine - 0.5f) * 0.08f - stain * 0.16f;
+                    c[y * TexSize + x] = new Color(tone, tone * 0.985f, tone * 0.955f);
+                }
+            }
+
+            return c;
+        }
+
+        // ---- 拼花地板：0.25 × 1.0 m 的木条错缝，每条一个色调，顺纹理拉长的噪声当木纹 ----
+
+        private const int PlanksAcross = 8;      // 贴图代表 2 m：8 条 × 0.25 m
+        private const int PlankLengthPx = TexSize / 2;
+
+        private static void PlankAt(int x, int y, out int col, out int row, out float edge)
+        {
+            int plankW = TexSize / PlanksAcross;
+            col = x / plankW;
+            int offset = (int)(Hash(col, 7) * PlankLengthPx);
+            int yy = (y + offset) % TexSize;
+            row = yy / PlankLengthPx;
+            int px = x % plankW;
+            int py = yy % PlankLengthPx;
+            edge = Mathf.Min(Mathf.Min(px, plankW - 1 - px), Mathf.Min(py, PlankLengthPx - 1 - py));
+        }
+
+        private static float[] ParquetHeight()
+        {
+            float[] h = new float[TexSize * TexSize];
+            for (int y = 0; y < TexSize; y++)
+            {
+                for (int x = 0; x < TexSize; x++)
+                {
+                    PlankAt(x, y, out _, out _, out float edge);
+                    h[y * TexSize + x] = edge < 1.5f ? 0f : 1f;
+                }
+            }
+
+            return h;
+        }
+
+        private static Color[] GenParquet()
+        {
+            Color[] c = new Color[TexSize * TexSize];
+            Color dark = new Color(0.20f, 0.12f, 0.07f);
+            Color light = new Color(0.36f, 0.23f, 0.13f);
+            for (int y = 0; y < TexSize; y++)
+            {
+                for (int x = 0; x < TexSize; x++)
+                {
+                    PlankAt(x, y, out int col, out int row, out float edge);
+                    float tone = Hash(col, row + 31);
+                    float u = x / (float)TexSize;
+                    float v = y / (float)TexSize;
+                    float grain = Mathf.PerlinNoise(u * 180f + col * 13f, v * 6f + row * 3f);
+                    float wear = Fbm(u, v, 4f, 3, 9.3f);
+                    Color w = Color.Lerp(dark, light, tone * 0.35f + grain * 0.35f + 0.1f);
+                    w *= 0.85f + wear * 0.3f;
+                    if (edge < 1.5f)
+                    {
+                        w *= 0.45f;
+                    }
+
+                    c[y * TexSize + x] = new Color(w.r, w.g, w.b);
+                }
+            }
+
+            return c;
+        }
+
+        // ---- 石材地砖：0.6 m 方砖（贴图 2×2 块），灰白底 + 云纹 + 深色灰缝 ----
+
+        private static float GroutDistance(int x, int y)
+        {
+            int tile = TexSize / 2;
+            int px = x % tile;
+            int py = y % tile;
+            return Mathf.Min(Mathf.Min(px, tile - 1 - px), Mathf.Min(py, tile - 1 - py));
+        }
+
+        private static float[] StoneTileHeight()
+        {
+            float[] h = new float[TexSize * TexSize];
+            for (int y = 0; y < TexSize; y++)
+            {
+                for (int x = 0; x < TexSize; x++)
+                {
+                    h[y * TexSize + x] = GroutDistance(x, y) < 2f ? 0f : 1f;
+                }
+            }
+
+            return h;
+        }
+
+        private static Color[] GenStoneTile()
+        {
+            Color[] c = new Color[TexSize * TexSize];
+            int tile = TexSize / 2;
+            for (int y = 0; y < TexSize; y++)
+            {
+                for (int x = 0; x < TexSize; x++)
+                {
+                    float u = x / (float)TexSize;
+                    float v = y / (float)TexSize;
+                    int tx = x / tile;
+                    int ty = y / tile;
+                    float tone = 0.44f + Hash(tx + 3, ty + 9) * 0.10f;
+                    float n = Fbm(u, v, 6f, 4, 13.1f + tx * 2.7f + ty * 1.9f);
+                    float vein = Mathf.Pow(1f - Mathf.Abs(Mathf.Sin((u * 3f + v * 2f + n * 4f) * Mathf.PI)), 18f);
+                    float grime = Fbm(u, v, 2f, 3, 40.2f);
+                    float g = tone + (n - 0.5f) * 0.14f - vein * 0.12f - grime * 0.12f;
+                    Color col = new Color(g * 1.02f, g, g * 0.95f);
+                    if (GroutDistance(x, y) < 2f)
+                    {
+                        col = new Color(0.16f, 0.15f, 0.14f);
+                    }
+
+                    c[y * TexSize + x] = col;
+                }
+            }
+
+            return c;
+        }
+
+        // ---- 旧石材（楼梯、底座）：斑驳灰，没有砖缝 ----
+
+        private static Color[] GenStoneWorn()
+        {
+            Color[] c = new Color[TexSize * TexSize];
+            for (int y = 0; y < TexSize; y++)
+            {
+                for (int x = 0; x < TexSize; x++)
+                {
+                    float u = x / (float)TexSize;
+                    float v = y / (float)TexSize;
+                    float n = Fbm(u, v, 8f, 5, 33.3f);
+                    float pits = Mathf.Clamp01((Fbm(u, v, 48f, 2, 5.5f) - 0.62f) * 8f);
+                    float g = 0.78f + (n - 0.5f) * 0.35f - pits * 0.2f;
+                    c[y * TexSize + x] = new Color(g, g * 0.98f, g * 0.94f);
+                }
+            }
+
+            return c;
+        }
+
+        // ---- 木纹（线条、护墙板、梁）：沿 U 方向拉长 ----
+
+        private static Color[] GenWoodGrain()
+        {
+            Color[] c = new Color[TexSize * TexSize];
+            for (int y = 0; y < TexSize; y++)
+            {
+                for (int x = 0; x < TexSize; x++)
+                {
+                    float u = x / (float)TexSize;
+                    float v = y / (float)TexSize;
+                    float warp = Fbm(u, v, 3f, 3, 2.2f);
+                    float rings = Mathf.Sin((v * 40f + warp * 6f) * Mathf.PI) * 0.5f + 0.5f;
+                    float fine = Fbm(u, v, 60f, 2, 8.8f);
+                    float g = 0.75f + rings * 0.18f + (fine - 0.5f) * 0.12f;
+                    c[y * TexSize + x] = new Color(g, g, g);
+                }
+            }
+
+            return c;
+        }
+
+        // ---- 浮尘精灵：中心实、边缘柔的圆点 ----
+
+        private static Color[] GenDustMote()
+        {
+            const int s = 64;
+            Color[] c = new Color[s * s];
+            for (int y = 0; y < s; y++)
+            {
+                for (int x = 0; x < s; x++)
+                {
+                    float dx = (x + 0.5f) / s * 2f - 1f;
+                    float dy = (y + 0.5f) / s * 2f - 1f;
+                    float d = Mathf.Sqrt(dx * dx + dy * dy);
+                    float a = Mathf.Clamp01(1f - d);
+                    a = a * a * (3f - 2f * a);
+                    c[y * s + x] = new Color(1f, 1f, 1f, a);
+                }
+            }
+
+            return c;
+        }
+
+        private static Color[] HeightToNormal(float[] h, float strength)
+        {
+            Color[] c = new Color[TexSize * TexSize];
+            for (int y = 0; y < TexSize; y++)
+            {
+                for (int x = 0; x < TexSize; x++)
+                {
+                    float l = h[y * TexSize + (x - 1 + TexSize) % TexSize];
+                    float r = h[y * TexSize + (x + 1) % TexSize];
+                    float d = h[((y - 1 + TexSize) % TexSize) * TexSize + x];
+                    float u = h[((y + 1) % TexSize) * TexSize + x];
+                    Vector3 n = new Vector3((l - r) * strength, (d - u) * strength, 1f).normalized;
+                    c[y * TexSize + x] = new Color(n.x * 0.5f + 0.5f, n.y * 0.5f + 0.5f, n.z * 0.5f + 0.5f);
+                }
+            }
+
+            return c;
+        }
+    }
+}

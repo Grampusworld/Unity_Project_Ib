@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 520" width="680" height="520" role="img">
+<title>美术馆二层俯视图</title>
+<desc>二层为楼梯厅、名画长廊、全家福厅；值班室移到西南角，厕所移到东南角，长廊两侧增加展示柜体。</desc>
+<defs>
+<marker id="a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#A32D2D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+<marker id="a3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+
+<rect x="0" y="0" width="680" height="520" fill="#FAF9F7"/>
+<text x="40" y="26" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#2C2C2A">2F · 40 × 26 m</text>
+<text x="240" y="26" font-family="Helvetica,Arial,sans-serif" font-size="12" fill="#6B7280">值班室在西南，厕所在东南，长廊两侧是展柜</text>
+
+<rect x="40" y="44" width="198" height="231" rx="6" fill="#EDEBE6" stroke="#D3D1C7" stroke-width="0.8"/>
+<rect x="40" y="275" width="198" height="159" rx="6" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.8"/>
+<rect x="235" y="44" width="195" height="75" rx="6" fill="#F1EFE8" stroke="#B4B2A9" stroke-width="0.8"/>
+<rect x="235" y="119" width="195" height="315" rx="6" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.8"/>
+<rect x="430" y="44" width="210" height="100" rx="6" fill="#EDEBE6" stroke="#D3D1C7" stroke-width="0.8"/>
+<rect x="430" y="144" width="210" height="166" rx="6" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.8"/>
+<rect x="540" y="310" width="100" height="124" rx="6" fill="#EDEBE6" stroke="#D3D1C7" stroke-width="0.8"/>
+<rect x="430" y="320" width="110" height="114" rx="6" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.8"/>
+
+<text x="52" y="66" font-family="Helvetica,Arial,sans-serif" font-size="12" fill="#A8A6A0">未开放（此路不通）</text>
+<text x="52" y="298" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="bold" fill="#2C2C2A">值班室 · A</text>
+<text x="52" y="314" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#888780">监控屏 · 互动核心</text>
+<text x="247" y="66" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="bold" fill="#2C2C2A">楼梯厅</text>
+<text x="247" y="82" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#888780">下一楼</text>
+<text x="247" y="140" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="bold" fill="#2C2C2A">名画长廊</text>
+<text x="247" y="156" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#888780">13 × 21 m · 借展 6 幅</text>
+<text x="442" y="166" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="bold" fill="#2C2C2A">全家福厅</text>
+<text x="442" y="182" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#888780">独立小厅 · 仅 2 件</text>
+<text x="442" y="342" font-family="Helvetica,Arial,sans-serif" font-size="12" font-weight="bold" fill="#2C2C2A">厕所</text>
+<text x="562" y="332" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#A8A6A0">未开放</text>
+
+<rect x="70" y="360" width="120" height="14" rx="2" fill="#B5D4F4" stroke="#185FA5" stroke-width="0.8"/>
+<text x="130" y="386" font-family="Helvetica,Arial,sans-serif" font-size="10" fill="#185FA5" text-anchor="middle">监控屏 · 雕塑区画面</text>
+
+<circle cx="243" cy="186" r="4" fill="#444441"/>
+<circle cx="243" cy="244" r="4" fill="#444441"/>
+<circle cx="243" cy="300" r="4" fill="#444441"/>
+<circle cx="422" cy="186" r="4" fill="#444441"/>
+<circle cx="422" cy="262" r="4" fill="#444441"/>
+<circle cx="422" cy="330" r="4" fill="#444441"/>
+<text x="232" y="356" font-family="Helvetica,Arial,sans-serif" font-size="10" fill="#888780">其中 2 幅是空框</text>
+
+<rect x="252" y="168" width="44" height="14" rx="2" fill="#D3D1C7" stroke="#888780" stroke-width="0.8"/>
+<rect x="366" y="216" width="44" height="14" rx="2" fill="#D3D1C7" stroke="#888780" stroke-width="0.8"/>
+<rect x="252" y="258" width="44" height="14" rx="2" fill="#D3D1C7" stroke="#888780" stroke-width="0.8"/>
+<rect x="366" y="288" width="44" height="14" rx="2" fill="#D3D1C7" stroke="#888780" stroke-width="0.8"/>
+<rect x="252" y="330" width="44" height="14" rx="2" fill="#D3D1C7" stroke="#888780" stroke-width="0.8"/>
+<text x="330" y="404" font-family="Helvetica,Arial,sans-serif" font-size="10" fill="#5F5E5A" text-anchor="middle">展柜掩体 ×5</text>
+
+<circle cx="330" cy="200" r="7" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1"/>
+<circle cx="330" cy="316" r="7" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1"/>
+<text x="344" y="204" font-family="Helvetica,Arial,sans-serif" font-size="10" fill="#0F6E56">名画人物 ×2</text>
+
+<rect x="470" y="196" width="34" height="42" rx="2" fill="#FAECE7" stroke="#993C1D" stroke-width="1"/>
+<text x="512" y="210" font-family="Helvetica,Arial,sans-serif" font-size="10" fill="#993C1D">全家福（画架）</text>
+<circle cx="600" cy="166" r="4" fill="#444441"/>
+<text x="600" y="158" font-family="Helvetica,Arial,sans-serif" font-size="10" fill="#888780" text-anchor="middle">《美术馆》</text>
+
+<rect x="448" y="326" width="54" height="6" rx="2" fill="#B5D4F4" stroke="#185FA5" stroke-width="0.8"/>
+<text x="475" y="322" font-family="Helvetica,Arial,sans-serif" font-size="10" fill="#185FA5" text-anchor="middle">镜子</text>
+<circle cx="505" cy="396" r="6" fill="#FAC775" stroke="#854F0B" stroke-width="1"/>
+<text x="505" y="416" font-family="Helvetica,Arial,sans-serif" font-size="10" fill="#854F0B" text-anchor="middle">手电</text>
+
+<path d="M430 384 L414 384" fill="none" stroke="#888780" stroke-width="3"/>
+<text x="396" y="376" font-family="Helvetica,Arial,sans-serif" font-size="10" fill="#888780">门</text>
+<path d="M238 390 L252 390" fill="none" stroke="#888780" stroke-width="3"/>
+
+<path d="M332 88 L332 158" fill="none" stroke="#A32D2D" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#a2)"/>
+<path d="M352 182 L446 202" fill="none" stroke="#A32D2D" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#a2)"/>
+<path d="M470 240 L470 290 L350 290 L350 380 L420 384" fill="none" stroke="#9CA3AF" stroke-width="1.2" stroke-dasharray="3 4" marker-end="url(#a3)"/>
+
+<circle cx="332" cy="78" r="10" fill="#FFFFFF" stroke="#A32D2D" stroke-width="1.2"/>
+<text x="332" y="82" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#A32D2D" text-anchor="middle">5</text>
+<circle cx="332" cy="172" r="10" fill="#FFFFFF" stroke="#A32D2D" stroke-width="1.2"/>
+<text x="332" y="176" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#A32D2D" text-anchor="middle">6</text>
+<circle cx="446" cy="200" r="10" fill="#FFFFFF" stroke="#A32D2D" stroke-width="1.2"/>
+<text x="446" y="204" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#A32D2D" text-anchor="middle">7</text>
+<circle cx="436" cy="398" r="10" fill="#FFFFFF" stroke="#A32D2D" stroke-width="1.2"/>
+<text x="436" y="402" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#A32D2D" text-anchor="middle">10</text>
+
+<circle cx="44" cy="492" r="7" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1"/>
+<text x="56" y="496" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#5F5E5A">名画人物</text>
+<circle cx="128" cy="492" r="4" fill="#444441"/>
+<text x="138" y="496" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#5F5E5A">艺术品</text>
+<rect x="198" y="485" width="22" height="12" rx="2" fill="#D3D1C7" stroke="#888780" stroke-width="0.8"/>
+<text x="226" y="496" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#5F5E5A">展柜</text>
+<path d="M272 492 L298 492" fill="none" stroke="#A32D2D" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#a2)"/>
+<text x="304" y="496" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#5F5E5A">去</text>
+<path d="M328 492 L354 492" fill="none" stroke="#9CA3AF" stroke-width="1.2" stroke-dasharray="3 4" marker-end="url(#a3)"/>
+<text x="360" y="496" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#5F5E5A">回　A 监控屏</text>
+</svg>
