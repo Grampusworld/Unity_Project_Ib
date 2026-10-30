@@ -21,6 +21,18 @@ namespace Ib.EditorTools
         private const float NpcMaxHeight = 1.75f;
         private const float AngelClearRadius = 4.5f;
 
+        // maolin 10-30 在场景里手删的三个人：站位照常算、照常占位（后面的人位置不变），只是不生成
+        private static readonly HashSet<string> CrowdRemoved = new HashSet<string>
+        {
+            "NPC_Garments_E12_0", "NPC_Vitrine_Pendant_1", "NPC_StatueOfLiberty_1",
+        };
+
+        // maolin 10-30 手挪的人：名字 → (x, z, 朝向°)，高度照生成的算
+        private static readonly Dictionary<string, Vector3> CrowdMoved = new Dictionary<string, Vector3>
+        {
+            { "NPC_LilyDress_Case_0", new Vector3(34.27f, 9.66f, -45.375f) },
+        };
+
         private struct Segment
         {
             public Vector2 A;
@@ -96,8 +108,12 @@ namespace Ib.EditorTools
                     if (TryFindSpot(e, j, count, rng, floorY, second, room, radius, height, lines, zones, placed, out Vector3 spot))
                     {
                         placed.Add(spot);
-                        Npc(group, "NPC_" + e.Name + "_" + j, spot, e.B.center, height, radius, white);
-                        total++;
+                        string npcName = "NPC_" + e.Name + "_" + j;
+                        if (!CrowdRemoved.Contains(npcName))
+                        {
+                            Npc(group, npcName, spot, e.B.center, height, radius, white);
+                            total++;
+                        }
                     }
                     else
                     {
@@ -112,6 +128,19 @@ namespace Ib.EditorTools
             Vector3 grampusFoot = new Vector3(29.75f, Floor2Y, FamilyDoorZ);
             Npc(family, "NPC_Grampus_FamilyPortrait", grampusFoot, easel + Vector3.up, 1.7f, 0.24f, white);
             total++;
+
+            foreach (KeyValuePair<string, Vector3> kv in CrowdMoved)
+            {
+                Transform t = FindDeep(root, kv.Key);
+                if (t == null)
+                {
+                    Debug.LogWarning("[GrayboxBuilder] 要挪的人不存在：" + kv.Key);
+                    continue;
+                }
+
+                t.position = new Vector3(kv.Value.x, t.position.y, kv.Value.y);
+                t.rotation = Quaternion.Euler(0f, kv.Value.z, 0f);
+            }
 
             Debug.Log("[GrayboxBuilder] 人群站位：" + total + " 个" + (skipped > 0 ? "（" + skipped + " 个找不到合适位置，跳过）" : "") + "。");
         }

@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4f44fb52462941cb98fab214925d0814, type: 3}
+  m_Name: T15
+  m_EditorClassIdentifier: 
+  title: "Case Closure Report (copy)"
+  body: "No signs of struggle. Doors and windows intact. No evidence of entry.\nPaint on the easel still wet \u2014 not relevant to the case.\nFamily member (F, 20) states \u2018there's one more person in the painting\u2019; emotional, not credited.\nConclusion: subject left of his own accord. Family advised to search independently. Case closed."
+  hand: 0

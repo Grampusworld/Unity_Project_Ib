@@ -1,12 +1,15 @@
 using System.Collections.Generic;
+using Ib.Core;
 using Ib.Environment;
+using Ib.Flow;
 using UnityEngine;
 
 namespace Ib.Threats
 {
     /// <summary>
     /// 会动的人台（GDD §5 服装厅）：沿自己的 WaypointPath 匀速往返，不转向玩家、不加速。
-    /// 默认不动 —— 按 GDD 要等"拿起手电"那一刻才出动，到时候调 SetAllActive(true)。
+    /// 默认不动 —— 按 GDD 要等"拿起手电"那一刻才出动，条件见 ThreatSchedule.CollectionOut。
+    /// 死亡重生（GameOverScreen.Continued）时回到原位，再按当前状态重设开关。
     /// 现在只负责移动和朝向；"碰到就被收走"的判定以后在这里加。
     /// 调试：Inspector 里勾 startActive，或组件右键菜单「切换移动」。
     /// </summary>
@@ -30,6 +33,14 @@ namespace Ib.Threats
 
         private int target = 1;
         private int step = 1;
+        private Vector3 homePosition;
+        private Quaternion homeRotation;
+
+        private void Awake()
+        {
+            homePosition = transform.position;
+            homeRotation = transform.rotation;
+        }
 
         public static void SetAllActive(bool active)
         {
@@ -42,12 +53,31 @@ namespace Ib.Threats
         private void OnEnable()
         {
             all.Add(this);
-            IsActive = startActive;
+            GameFlow.StateChanged += OnStateChanged;
+            GameFlow.FlashlightObtained += Refresh;
+            GameOverScreen.Continued += ResetForRespawn;
+            Refresh();
         }
 
         private void OnDisable()
         {
             all.Remove(this);
+            GameFlow.StateChanged -= OnStateChanged;
+            GameFlow.FlashlightObtained -= Refresh;
+            GameOverScreen.Continued -= ResetForRespawn;
+        }
+
+        private void OnStateChanged(GameState from, GameState to) => Refresh();
+
+        private void Refresh() => IsActive = startActive || ThreatSchedule.CollectionOut;
+
+        private void ResetForRespawn()
+        {
+            transform.SetPositionAndRotation(homePosition, homeRotation);
+            target = 1;
+            step = 1;
+            CurrentSpeed = 0f;
+            Refresh();
         }
 
         [ContextMenu("切换移动")]

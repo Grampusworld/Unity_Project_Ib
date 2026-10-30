@@ -3,6 +3,8 @@ using Ib.Core;
 using Ib.Environment;
 using Ib.Interaction;
 using Ib.Player;
+using Ib.Threats;
+using Unity.AI.Navigation;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -217,6 +219,7 @@ namespace Ib.EditorTools
             BuildWalls2F(museum, p);
             BuildStairs(museum, p);
             MarkStatic(museum);
+            BuildStairPowerOutTrigger();
 
             Transform props = new GameObject("Props_Museum").transform;
             BuildProps1F(props, p);
@@ -236,6 +239,9 @@ namespace Ib.EditorTools
 
             // 画中馆人群站位（白色圆柱，GrayboxBuilder.Crowd.cs）：要等墙、道具、展品都放好，按碰撞找空位
             BuildCrowd(exhibits, museum);
+            // 文本收集物 T1–T16（GDD §6.11.2）：放在人群之后，新加的碰撞体不会挤动已有的人群站位
+            BuildTextPickups(props, p);
+            BuildRopedMannequins(props);
             CheckDoorClearance(museum);
 
             GameObject blackRoom = BuildBlackRoom(p);
@@ -561,19 +567,26 @@ namespace Ib.EditorTools
             AddProp(gallery, "Pickup_StudioTicket", 23.2f, y + 1.4f, 9.27f, 0.18f, 0.01f, 0.1f, p.Key);   // 展柜玻璃罩顶上
             AddWallPanel(gallery, "Sketch_LilyLooksAtDoor", new Vector3(WestLineX + HalfWall, y + 1.4f, DutyDoorZ + 1.4f),
                 Vector3.right, 0.6f, 0.8f, p.Exhibit);
-            AddDoorPanel(gallery, "Door_Duty_MagLock", false, WestLineX, DutyDoor, y, p.Door);
+            // 停电（≥ PowerOut）时电磁锁门滑开（Interfaces.md 场景切换与检查点）。门板在 x = 13 的墙里、沿 Z 宽 1.2 m，
+            // 往南（−Z）滑整整一个门宽，缩进 z 1.2–2.4 的墙体，门洞全空出来。slide 是世界位移，要乘 WorldScale
+            GameObject dutyDoor = AddDoorPanel(gallery, "Door_Duty_MagLock", false, WestLineX, DutyDoor, y, p.Door);
+            SetVector3(dutyDoor.AddComponent<MagLockDoor>(), "slide", new Vector3(0f, 0f, -SmallDoorWidth * WorldScale));
             AddDoorPanel(gallery, "Door_Closed_Locked", false, WestLineX, LockedDoor, y, p.Door);
 
             // ---- 全家福厅：只有两件 ----
             Transform family = NewGroup(root, "FamilyRoom");
             AddEasel(family, "FamilyPortrait_Easel", new Vector3(30.5f, y, FamilyDoorZ), -90f, p.Prop, p.Exhibit);
+            // 第 6 步：PaintedGallery 时对全家福按 E 传回黑屋；碰撞体用画架子物体的（交互检测 GetComponentInParent）
+            FindDeep(family, "FamilyPortrait_Easel").gameObject.AddComponent<FamilyPortraitExit>();
             AddProp(family, "Pickup_FlowerAndNote", 30.1f, y, FamilyDoorZ + 0.2f, 0.25f, 0.05f, 0.18f, p.Key);
             AddWallPanel(family, "Painting_TheMuseum_ExitFrame", new Vector3(37.0f, y + 0.3f + 0.9f, FamilyNorthZ - HalfWall),
                 Vector3.back, 2.5f, 1.8f, p.Exhibit);
 
             // ---- 值班室 ----
             Transform duty = NewGroup(root, "DutyRoom");
-            AddProp(duty, "A_MonitorWall", 6.5f, y + 0.5f, DutyNorthZ - HalfWall - 0.25f, 4.0f, 1.3f, 0.4f, p.Key);
+            // 第 14 步：停电且有手电时按 E 查看监控 → AngelsActive；AddProp 的方块自带 BoxCollider
+            AddProp(duty, "A_MonitorWall", 6.5f, y + 0.5f, DutyNorthZ - HalfWall - 0.25f, 4.0f, 1.3f, 0.4f, p.Key)
+                .AddComponent<MonitorTerminal>();
             AddProp(duty, "DutyDesk", 6.5f, y, 9.4f, 3.6f, 0.75f, 0.9f, p.Prop);
             AddProp(duty, "A_HandoverLog", 5.8f, y + 0.75f, 9.3f, 0.4f, 0.04f, 0.3f, p.Key);
 
@@ -582,10 +595,39 @@ namespace Ib.EditorTools
             AddWallPanel(toilet, "Mirror", new Vector3(29.0f, y + 1.45f, ToiletNorthZ - HalfWall), Vector3.back, 3.6f, 1.0f, p.Glass);
             BuildToiletFixtures(toilet, y);   // 隔间、洗手台、小便斗等，见 GrayboxBuilder.Models.cs
             AddProp(toilet, "Shelf", 31.0f, y, HalfWall + 0.25f, 1.2f, 0.9f, 0.5f, p.Prop);
-            AddProp(toilet, "Pickup_Flashlight", 31.0f, y + 0.9f, HalfWall + 0.25f, 0.28f, 0.08f, 0.08f, p.Key);
+            // 手电：按 E 拿起（GDD §3.6 第 12 步），逻辑在 Gameplay 的 FlashlightPickup，靠自身 BoxCollider 被准星命中
+            AddProp(toilet, "Pickup_Flashlight", 31.0f, y + 0.9f, HalfWall + 0.25f, 0.28f, 0.08f, 0.08f, p.Key)
+                .AddComponent<FlashlightPickup>();
         }
 
         // ================================================================ 怪物占位（无碰撞，只看站位）
+
+        /// <summary>第 10 步：楼梯中段（平台）断电。触发盒盖满整个平台（两跑全宽），平台面往上 2 m。</summary>
+        private static void BuildStairPowerOutTrigger()
+        {
+            Transform root = new GameObject("Triggers_Flow").transform;
+            float landingTop = Floor1Y + StairRisersPerFlight * StairRise;
+            float x0 = WestLineX + HalfWall;
+            float z0 = StairHallSouthZ + HalfWall;
+            float z1 = BuildingDepth - HalfWall;
+            AddFlowTrigger(root, "Trigger_PowerOut_Stairs", new Vector3((x0 + StairLandingEastX) * 0.5f, landingTop + 1f, (z0 + z1) * 0.5f),
+                new Vector3(StairLandingEastX - x0, 2f, z1 - z0), StateTrigger.Step.PowerOut);
+        }
+
+        /// <summary>状态触发盒：空物体 + isTrigger BoxCollider（不渲染、不挡人），NavMesh 烘焙忽略它。</summary>
+        private static void AddFlowTrigger(Transform parent, string name, Vector3 center, Vector3 size, StateTrigger.Step step)
+        {
+            GameObject go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = center;
+            go.transform.localScale = size;
+            go.AddComponent<BoxCollider>().isTrigger = true;
+            go.AddComponent<NavMeshModifier>().ignoreFromBuild = true;
+            StateTrigger trigger = go.AddComponent<StateTrigger>();
+            SerializedObject so = new SerializedObject(trigger);
+            so.FindProperty("step").enumValueIndex = (int)step;
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
 
         private static void BuildThreatPlaceholders(Palette p)
         {
@@ -599,13 +641,17 @@ namespace Ib.EditorTools
             RemoveCollider(face);
 
             // 人偶 ×3：各一条独立往返路线（俯视图蓝色虚线）
-            AddMannequinPath(root, "Mannequin_Top", new Vector3(28.7f, Floor1Y, 22.8f), new Vector3(35.9f, Floor1Y, 22.8f), p);
+            // Top 的 A 点从 x 28.7 东移到 29.45：服装厅西北角新加了一圈绳子（x 28.78），28.78 + 立柱底座半径 0.14 + 人台底座半径 0.21 + 余量 0.3
+            AddMannequinPath(root, "Mannequin_Top", new Vector3(29.45f, Floor1Y, 22.8f), new Vector3(35.9f, Floor1Y, 22.8f), p);
             AddMannequinPath(root, "Mannequin_Right", new Vector3(37.3f, Floor1Y, 23.5f), new Vector3(37.3f, Floor1Y, 5.1f), p);
             AddMannequinPath(root, "Mannequin_Bottom", new Vector3(28.7f, Floor1Y, 6.5f), new Vector3(36.1f, Floor1Y, 6.5f), p);
 
             // 名画人物 ×2：站在各自的空框前（拿起手电后才出现）
-            AddCapsule(root, "PaintingFigure_A", new Vector3(14.2f, Floor2Y, 16.5f), 1.75f, 0.28f, p.Threat, false);
-            AddCapsule(root, "PaintingFigure_B", new Vector3(24.8f, Floor2Y, 6.93f), 1.75f, 0.28f, p.Threat, false);
+            // 挂 PaintingFigure（总监 10-30）：只有出动开关；占位胶囊没有子物体，stillVisual/outVisual 不填
+            AddCapsule(root, "PaintingFigure_A", new Vector3(14.2f, Floor2Y, 16.5f), 1.75f, 0.28f, p.Threat, false)
+                .AddComponent<PaintingFigure>();
+            AddCapsule(root, "PaintingFigure_B", new Vector3(24.8f, Floor2Y, 6.93f), 1.75f, 0.28f, p.Threat, false)
+                .AddComponent<PaintingFigure>();
         }
 
         private static void AddMannequinPath(Transform parent, string name, Vector3 a, Vector3 b, Palette p)
@@ -706,10 +752,14 @@ namespace Ib.EditorTools
             AddSlab(frame, "Frame_Top", cx - fw * 0.5f, cx + fw * 0.5f, fz0, fz1, fb + fh, fb + fh + 0.12f, p.Key);
             AddSlab(frame, "Frame_Left", cx - fw * 0.5f - 0.12f, cx - fw * 0.5f, fz0, fz1, fb - 0.12f, fb + fh + 0.12f, p.Key);
             AddSlab(frame, "Frame_Right", cx + fw * 0.5f, cx + fw * 0.5f + 0.12f, fz0, fz1, fb - 0.12f, fb + fh + 0.12f, p.Key);
+            // 第 7 步：走进空画框 → AfterHours。触发盒盖住框内（框里 + 框前 0.5 m），跟着画框一起隐藏/显示
+            AddFlowTrigger(frame, "Trigger_EmptyFrame", new Vector3(cx, fb + fh * 0.5f, (fz0 - 0.5f + fz1) * 0.5f),
+                new Vector3(fw, fh, fz1 - fz0 + 0.5f), StateTrigger.Step.EmptyFrame);
             frame.gameObject.SetActive(false);
 
             // 画架 + 全家福草稿 + 刮刀（画面朝北，正对门；出生时背对门看画）
-            AddEasel(root, "FamilyPortraitSketch_Easel", new Vector3(cx, 0f, BlackEaselZ), 0f, p.Prop, p.Exhibit);
+            // 黑屋这个画架没有后腿（maolin 10-30 手改，玩家绕到画布背后不会被挡）
+            AddEasel(root, "FamilyPortraitSketch_Easel", new Vector3(cx, 0f, BlackEaselZ), 0f, p.Prop, p.Exhibit, false);
             GameObject knife = AddBox(root, "PaletteKnife", new Vector3(cx - 0.25f, 0.01f, BlackEaselZ + 0.45f),
                 new Vector3(0.04f, 0.015f, 0.26f), p.Key);
             RemoveCollider(knife);
@@ -805,15 +855,223 @@ namespace Ib.EditorTools
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        private static void AddEasel(Transform parent, string name, Vector3 basePos, float yaw, Material wood, Material canvas)
+        private static void AddEasel(Transform parent, string name, Vector3 basePos, float yaw, Material wood, Material canvas,
+            bool backLeg = true)
         {
             // 局部坐标里画面朝 +Z
             Transform root = NewGroup(parent, name, basePos, yaw);
             AddBox(root, "Leg_Left", new Vector3(-0.55f, 0.85f, 0.05f), new Vector3(0.05f, 1.7f, 0.05f), wood);
             AddBox(root, "Leg_Right", new Vector3(0.55f, 0.85f, 0.05f), new Vector3(0.05f, 1.7f, 0.05f), wood);
-            AddBox(root, "Leg_Back", new Vector3(0f, 0.8f, -0.45f), new Vector3(0.05f, 1.6f, 0.05f), wood);
+            if (backLeg)
+            {
+                AddBox(root, "Leg_Back", new Vector3(0f, 0.8f, -0.45f), new Vector3(0.05f, 1.6f, 0.05f), wood);
+            }
+
             AddBox(root, "Ledge", new Vector3(0f, 0.82f, 0.08f), new Vector3(1.3f, 0.04f, 0.1f), wood);
-            AddBox(root, "Canvas", new Vector3(0f, 1.35f, 0.1f), new Vector3(1.4f, 1.0f, 0.04f), canvas);
+            AddBox(root, "Canvas", new Vector3(0f, 1.35f, 0.1f), new Vector3(FamilyPortraitWidth, 1.0f, 0.04f), canvas);
+
+            // 《全家福》贴在画布正面。Quad 只有 −Z 面可见，转 180° 让它朝 +Z
+            GameObject art = AddQuad(root, "FamilyPortrait", new Vector3(0f, 1.35f, 0.122f), new Vector2(FamilyPortraitWidth, 1.0f), FamilyPortraitMaterial());
+            art.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+            RemoveCollider(art);
+        }
+
+        // 原图 16:9，画布按原比例加宽，不裁画面。黑屋和二楼暂时用同一张（maolin 2026-10-30）
+        private const float FamilyPortraitWidth = 1.78f;
+        private const string FamilyPortraitTexture = "Assets/Art/Textures/Paintings/FamilyPortrait.png";
+
+        private static Material FamilyPortraitMaterial()
+        {
+            Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(FamilyPortraitTexture);
+            if (tex == null)
+            {
+                Debug.LogWarning("[GrayboxBuilder] 找不到全家福贴图 " + FamilyPortraitTexture);
+            }
+
+            return Lit("M_FamilyPortrait", tex, null, Color.white, 0.1f, 1f, 0f, false);
+        }
+
+        // ================================================================ 服装厅西北角：绳子围起来的一堆人台（maolin 10-30 手摆）
+
+        /// <summary>
+        /// 5 个不穿衣服、没有脖子的人台堆在服装厅西北角，两段立柱红绳围住（x ≈ 28.78、z ≈ 22.69）。
+        /// 静态摆设，不会动，每一块都有碰撞（人走不进去，导航网格按物理碰撞烘焙，会当成障碍）。
+        /// 位置从手改场景里 Mannequin_Top 下的子物体换算成世界坐标得来。放在人群之后，不挤动已有站位。
+        /// </summary>
+        private static void BuildRopedMannequins(Transform props)
+        {
+            Transform lily = FindDeep(props, "LilyDress_Case");
+            if (lily == null)
+            {
+                Debug.LogWarning("[GrayboxBuilder] 找不到服装厅分组，绳围人台没放");
+                return;
+            }
+
+            Transform g = NewGroup(lily.parent, "RopedMannequins_NW");
+            float y = Floor1Y;
+            float[,] spots = { { 27.376f, 24.684f }, { 27.069f, 23.319f }, { 26.72f, 24.37f }, { 27.923f, 25.288f }, { 28.054f, 24.241f } };
+            for (int i = 0; i < 5; i++)
+            {
+                Transform m = Mannequin(g, "Mannequin_Pile_" + (i + 1), new Vector3(spots[i, 0], y, spots[i, 1]), 90f, 1f, Outfit.None, null);
+                Transform neck = FindDeep(m, "Neck");
+                if (neck != null)
+                {
+                    Object.DestroyImmediate(neck.gameObject);   // 手摆的这几个没有脖子
+                }
+            }
+
+            Stanchions(g, "Rope_East", y, new Vector3(28.78f, 0f, 22.58f), new Vector3(28.78f, 0f, 25.28f), 2);
+            Stanchions(g, "Rope_South", y, new Vector3(26.257f, 0f, 22.801f), new Vector3(28.752f, 0f, 22.58f), 2);
+
+            // 每一块都补上碰撞（Mannequin / Stanchions 只给立柱留了碰撞）
+            foreach (MeshRenderer r in g.GetComponentsInChildren<MeshRenderer>())
+            {
+                if (r.GetComponent<Collider>() == null)
+                {
+                    r.gameObject.AddComponent<BoxCollider>();
+                }
+            }
+
+            MarkStatic(g);
+        }
+
+        // ================================================================ 文本收集物（GDD §6.11.2，T1–T16 共 19 个物体）
+
+        /// <summary>
+        /// 给物体挂 TextPickup 并填 textId。PlayerInteractor 用细球扫（忽略 Trigger），所以要实心碰撞体；没有就补一个 BoxCollider。
+        /// </summary>
+        private static void MakeTextPickup(GameObject go, string id)
+        {
+            if (go == null)
+            {
+                Debug.LogWarning("[GrayboxBuilder] 文本 " + id + " 找不到要挂的物体");
+                return;
+            }
+
+            if (go.GetComponent<Collider>() == null)
+            {
+                go.AddComponent<BoxCollider>();
+            }
+
+            SetString(go.AddComponent<TextPickup>(), "textId", id);
+        }
+
+        /// <summary>
+        /// 手电近距离直照时，浅色纸和浅色台面 / 墙一起过曝成白色，分不出来（maolin 10-30 实测）。
+        /// 所以新加的文本都是一块深色底板，上面贴一张偏暗、四周留边的纸：强光下深色边框照样看得见。
+        /// 纸面在最薄的那个轴上比底板厚 25%，两面都露出来，不用管朝向。纸没有碰撞，交互打在底板上。
+        /// </summary>
+        private static GameObject Framed(GameObject board, Material face)
+        {
+            if (board == null)
+            {
+                return null;
+            }
+
+            Vector3 s = board.transform.localScale;
+            int thin = s.x <= s.y && s.x <= s.z ? 0 : (s.y <= s.z ? 1 : 2);
+            Vector3 inset = new Vector3(0.86f, 0.86f, 0.86f);
+            inset[thin] = 1.25f;
+            LocalBox(board.transform, board.name + "_Paper", Vector3.zero, inset, face);
+            return board;
+        }
+
+        private static GameObject FindChild(Transform root, string name)
+        {
+            Transform t = FindDeep(root, name);
+            return t != null ? t.gameObject : null;
+        }
+
+        /// <summary>
+        /// 能复用的现有物体直接挂（导言墙、登记簿、交接本、花下便签、Lily 展签），其余新加一张纸 / 一块牌，名字 Text_&lt;id&gt;_&lt;简称&gt;。
+        /// 坐标都是放大前的 1 倍值；各房间分组都在原点，所以局部坐标 = 世界坐标（展柜、画架、前台例外，用各自的局部坐标）。
+        /// </summary>
+        private static void BuildTextPickups(Transform props, Palette p)
+        {
+            float y1 = Floor1Y;
+            float y2 = Floor2Y;
+            // 文本统一：深色底板 + 偏暗的纸面（见 Framed）。底板在 board，纸面是它的子物体
+            Material board = Lit("M_TextBoard", null, null, new Color(0.10f, 0.08f, 0.07f), 0.1f, 1f, 0f, false);
+            Material paper = Lit("M_TextPaper", null, null, new Color(0.60f, 0.55f, 0.44f), 0.05f, 1f, 0f, false);
+
+            // ---- 1F 接待厅 / 前台 ----
+            MakeTextPickup(FindChild(props, "Intro_Wall_TheAudience"), "T1");                 // 导言墙本身
+            Transform book = FindDeep(props, "Register_Book");
+            MakeTextPickup(book != null ? FindChild(book, "Cover") : null, "T4");              // 登记簿皮面（书页没有碰撞，球扫穿过去打到皮面）
+            Transform desk = FindDeep(props, "FrontDesk");
+            if (desk != null)
+            {
+                // 前台没有屏幕：便利贴贴在台面上、电话旁边
+                MakeTextPickup(Framed(LocalBox(desk, "Text_T5_StickyNote", new Vector3(-0.85f, 1.006f, 0.2f), new Vector3(0.17f, 0.012f, 0.17f), board), paper), "T5");
+                // 抽屉（员工那面 z = 0.43）还不会开：两份文件夹露在抽屉面板外，一左一右，避开中间的把手
+                MakeTextPickup(Framed(LocalBox(desk, "Text_T14_Workbook", new Vector3(-0.24f, 0.73f, 0.475f), new Vector3(0.26f, 0.22f, 0.012f), board), paper), "T14");
+                MakeTextPickup(Framed(LocalBox(desk, "Text_T15_CaseReport", new Vector3(0.24f, 0.73f, 0.475f), new Vector3(0.26f, 0.22f, 0.012f), board), paper), "T15");
+            }
+
+            // ---- 1F 配电间：西墙上的检修单（东墙是电闸箱，南墙是保安柜）----
+            GameObject cabinet = FindChild(props, "B_SecurityCabinet");
+            if (cabinet != null)
+            {
+                MakeTextPickup(Framed(AddWallPanel(cabinet.transform.parent, "Text_T9_ServiceSheet",
+                    new Vector3(PowerRoomWestX + HalfWall, y1 + 1.3f, 10.8f), Vector3.right, 0.42f, 0.56f, board), paper), "T9");
+            }
+
+            // ---- 1F 服装厅：Lily 柜的展签 T10（原来去掉了碰撞，这里补回来）----
+            MakeTextPickup(FindChild(props, "Label_T10"), "T10");
+
+            // ---- 2F 名画长廊：三页笔记 + 剪报，各在一个展柜，纸贴在柜身镶板外面（玻璃罩顶太高，孩子够不着也看不见）----
+            // 第 4 个展柜顶上已经有画室门票，不用。贴哪一面看那一侧有没有画中人站着（±1 = 北 / 南）
+            string[] vitrineIds = { "T6_1", "T11", "T6_2", "T6_3" };
+            string[] vitrineNames = { "DisplayCase_Cover_1", "DisplayCase_Cover_2", "DisplayCase_Cover_3", "DisplayCase_Cover_5" };
+            string[] shortNames = { "StudioNote1", "Clippings", "StudioNote2", "StudioNote3" };
+            float[] sides = { 1f, -1f, -1f, 1f };
+            for (int i = 0; i < 4; i++)
+            {
+                Transform v = FindDeep(props, vitrineNames[i]);
+                if (v == null)
+                {
+                    Debug.LogWarning("[GrayboxBuilder] 找不到展柜 " + vitrineNames[i]);
+                    continue;
+                }
+
+                MakeTextPickup(Framed(LocalBox(v, "Text_" + vitrineIds[i] + "_" + shortNames[i],
+                    new Vector3(-0.9f, 0.62f, sides[i] * 0.507f), new Vector3(0.32f, 0.23f, 0.014f), board), paper), vitrineIds[i]);
+            }
+
+            // ---- 2F 全家福厅：只加两块小牌 + 《美术馆》下面一个小展台（全厅唯一新增的小东西）----
+            GameObject flower = FindChild(props, "Pickup_FlowerAndNote");
+            MakeTextPickup(flower, "T12");                                                // 花下的便签
+            Transform easel = FindDeep(props, "FamilyPortrait_Easel");
+            if (easel != null)
+            {
+                // 夹在右腿正面、托架下面（画面朝局部 +Z = 世界 −X，朝门口）
+                MakeTextPickup(Framed(LocalBox(easel, "Text_T2_PortraitLabel", new Vector3(0.55f, 0.6f, 0.087f), new Vector3(0.3f, 0.21f, 0.014f), board), paper), "T2");
+            }
+
+            if (flower != null)
+            {
+                Transform family = flower.transform.parent;
+                // 《美术馆》连防尘布到 x ≈ 38.45，说明牌挂在布的东边
+                const float labelX = 38.85f;
+                MakeTextPickup(Framed(AddWallPanel(family, "Text_T3_MuseumLabel", new Vector3(labelX, y2 + 1.3f, FamilyNorthZ - HalfWall),
+                    Vector3.back, 0.45f, 0.31f, board), paper), "T3");
+                AddProp(family, "Text_T6_4_Stand", labelX, y2, FamilyNorthZ - HalfWall - 0.26f, 0.36f, 0.9f, 0.36f, Finishes.Wainscot);
+                MakeTextPickup(Framed(AddProp(family, "Text_T6_4_LastPage", labelX, y2 + 0.9f, FamilyNorthZ - HalfWall - 0.26f, 0.3f, 0.014f, 0.34f, board), paper), "T6_4");
+            }
+
+            // ---- 2F 值班室 ----
+            MakeTextPickup(FindChild(props, "A_HandoverLog"), "T7");                           // 桌上的交接本
+            GameObject dutyDesk = FindChild(props, "DutyDesk");
+            if (dutyDesk != null)
+            {
+                Transform duty = dutyDesk.transform.parent;
+                // 东墙（门那面）门北边，离门洞够远
+                MakeTextPickup(Framed(AddWallPanel(duty, "Text_T8_NightRules", new Vector3(WestLineX - HalfWall, y2 + 1.3f, 6.5f),
+                    Vector3.left, 0.5f, 0.65f, board), paper), "T8");
+                // 两个文件夹并排在桌面东半边（交接本在西边 x 5.8）
+                MakeTextPickup(Framed(AddProp(duty, "Text_T13_StockForm", 7.2f, y2 + 0.75f, 9.3f, 0.3f, 0.03f, 0.22f, board), paper), "T13");
+                MakeTextPickup(Framed(AddProp(duty, "Text_T16_DeathRuling", 7.75f, y2 + 0.75f, 9.4f, 0.3f, 0.03f, 0.22f, board), paper), "T16");
+            }
         }
 
         // ================================================================ 出生点、检查点、玩家
@@ -827,7 +1085,7 @@ namespace Ib.EditorTools
             // 顺序 = F1–F9。CP 是 §3.4 建议的自动检查点位置（待灰盒确定），DBG 只是调试入口。
             List<PlayerSpawnPoint> points = new List<PlayerSpawnPoint>
             {
-                AddSpawn(root, "CP0_BlackRoom_Start", new Vector3(BlackRoomCenterX, 0.02f, BlackEaselZ + 1.6f), 180f, true),
+                AddSpawn(root, "CP0_BlackRoom_Start", new Vector3(BlackRoomCenterX, 0.02f, BlackEaselZ + 2.4f), 180f, true),
                 AddSpawn(root, "CP1_ExitPainting_FamilyRoom", new Vector3(37.0f, y2, FamilyNorthZ - 1.4f), 180f, false),
                 AddSpawn(root, "CP2_Flashlight_Toilet", new Vector3(29.0f, y2, ToiletDoorZ), -90f, false),
                 AddSpawn(root, "CP3_TaskA_DutyRoom", new Vector3(11.5f, y2, DutyDoorZ), 90f, false),
@@ -837,6 +1095,10 @@ namespace Ib.EditorTools
                 AddSpawn(root, "DBG7_Stairs_1F", new Vector3(23.0f, y1, 23.5f), -90f, false),
                 AddSpawn(root, "DBG8_Gallery_2F_Top", new Vector3(23.0f, y2, 20.0f), 180f, false),
             };
+
+            // 停电检查点（Checkpoints.PowerOut）：楼梯平台南半边、第二跑起步处，面朝东（上楼方向）。
+            // 不进调试列表，F1–F9 不变
+            AddSpawn(root, "CP_PowerOut_Stairs", new Vector3(14.3f, Floor1Y + StairRisersPerFlight * StairRise + 0.02f, 22.3f), 90f, false);
 
             PlayerSpawnPoint start = points[0];
 
@@ -1560,6 +1822,20 @@ namespace Ib.EditorTools
             EditorUtility.SetDirty(target);
         }
 
+        private static void SetVector3(Object target, string fieldName, Vector3 value)
+        {
+            SerializedObject so = new SerializedObject(target);
+            SerializedProperty property = FindProperty(so, target, fieldName);
+            if (property == null)
+            {
+                return;
+            }
+
+            property.vector3Value = value;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(target);
+        }
+
         private static void SetBool(Object target, string fieldName, bool value)
         {
             SerializedObject so = new SerializedObject(target);
@@ -1570,6 +1846,20 @@ namespace Ib.EditorTools
             }
 
             property.boolValue = value;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(target);
+        }
+
+        private static void SetString(Object target, string fieldName, string value)
+        {
+            SerializedObject so = new SerializedObject(target);
+            SerializedProperty property = FindProperty(so, target, fieldName);
+            if (property == null)
+            {
+                return;
+            }
+
+            property.stringValue = value;
             so.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(target);
         }

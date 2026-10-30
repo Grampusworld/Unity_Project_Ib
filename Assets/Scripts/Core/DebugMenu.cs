@@ -240,7 +240,7 @@ namespace Ib.Core
                 : flashlight.HasFlashlight ? "已有手电筒（F 开关）" : "给主角手电筒";
             if (GUILayout.Button(label, buttonStyle))
             {
-                flashlight.Give();
+                Ib.Flow.GameFlow.GiveFlashlight();
             }
             GUI.enabled = true;
         }

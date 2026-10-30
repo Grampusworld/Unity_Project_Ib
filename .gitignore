@@ -116,3 +116,6 @@ InitTestScene*.unity*
 # macOS / 其他 Agent 的工作区
 .DS_Store
 .workbuddy/
+
+# 场景整份备份太大（每份约 18MB），只留本地，git 历史里已有
+Docs/Backup/**/Graybox.unity.txt

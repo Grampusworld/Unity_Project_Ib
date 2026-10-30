@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Ib.Core;
 using Ib.Environment;
+using Ib.Flow;
 using Ib.Player;
 using UnityEngine;
 using UnityEngine.AI;
@@ -88,13 +89,26 @@ namespace Ib.Threats
             homeRotation = transform.rotation;
         }
 
-        private void OnEnable() => All.Add(this);
+        private void OnEnable()
+        {
+            All.Add(this);
+            // 阶段跟着全局状态走（ThreatSchedule.AngelPhase）；Start 时先用 Inspector 里的 phase（调试用），之后每次状态切换覆盖它
+            GameFlow.StateChanged += OnStateChanged;
+            GameOverScreen.Continued += ResetForRespawn;
+        }
 
         private void OnDisable()
         {
             All.Remove(this);
+            GameFlow.StateChanged -= OnStateChanged;
+            GameOverScreen.Continued -= ResetForRespawn;
             RefreshFlashlightFlicker();
         }
+
+        private void OnStateChanged(GameState from, GameState to) => SetPhase(ThreatSchedule.AngelPhase(to));
+
+        /// <summary>死亡重生：按当前状态重进一次阶段（Attack 会重新从展台下地，Still/Peek 回展台原位）。</summary>
+        private void ResetForRespawn() => SetPhase(ThreatSchedule.AngelPhase(GameFlow.State), true);
 
         private void Start()
         {

@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 350251680976404097}
   - component: {fileID: 6727789950282753712}
   - component: {fileID: 1797443424369264684}
-  - component: {fileID: 7200987284536977856}
+  - component: {fileID: 1424695936237993331}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -139,7 +139,7 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
---- !u!114 &7200987284536977856
+--- !u!114 &1424695936237993331
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -325,7 +325,7 @@ MonoBehaviour:
   mask:
     serializedVersion: 2
     m_Bits: 4294967295
-  showPrompt: 1
+  highlightWidth: 0.03
 --- !u!114 &2628018906321108503
 MonoBehaviour:
   m_ObjectHideFlags: 0

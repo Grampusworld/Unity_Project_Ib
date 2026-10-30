@@ -224,3 +224,68 @@
 
 截图：`Docs/Graybox_Screenshot.png`（俯视：一层 / 二层 / 黑屋），`Docs/Graybox_FP_*.png`（第一人称：画架、转身看门缝、开门中、门开、接待厅）。
 10-22 晚复查截图：`Docs/check_spawn_easel.png`（出生视角）、`Docs/check_behind_canvas.png`（绕到画布背后）、`Docs/check_crack_blackroom.png`（黑屋看门缝光，单面可见）、`Docs/check_door_reception.png`（接待厅侧：看不到缝光、两个把手对称）、`Docs/check_door_closeup.png`（中缝特写）、`Docs/check_prompt.png`（放大后的交互提示）。
+
+## 10-30：全家福贴图 + 文本拾取物 + 写回手改
+（坐标：括号里是放大后的世界坐标 ≈ 常量 × 1.4。**还没在 Unity 里重新生成验证**。）
+
+### 全家福贴图
+- `AddEasel` 画布加宽到 1.78 × 1.0 m（原图 16:9，不裁），正面贴 `FamilyPortrait` Quad，材质 `M_FamilyPortrait`，贴图 `Assets/Art/Textures/Paintings/FamilyPortrait.png`。黑屋和二楼暂用同一张。
+
+### 文本拾取物（GDD §6.11.2，19 个物体）
+- 都挂 `TextPickup` 并填 `textId`；PlayerInteractor 球扫忽略 Trigger，所以都是实心 BoxCollider。
+- 在 `BuildTextPickups` 里统一放，调用位置在 `BuildCrowd` 之后：新碰撞体不会挤动人群站位。
+
+| textId | 物体（Props_Museum 下） | 世界坐标 ≈ | |
+|---|---|---|---|
+| T1 | 1F/Reception/Intro_Wall_TheAudience | (27.3, 3.4, 12.3) | 复用 |
+| T4 | 1F/Reception/FrontDesk/Register_Book/Cover | (29.0, 1.4, 9.7) | 复用 |
+| T5 | 1F/Reception/FrontDesk/Text_T5_StickyNote（台面电话旁，前台没有屏幕） | (26.1, 1.4, 9.9) | 新 |
+| T14 | 1F/Reception/FrontDesk/Text_T14_Workbook（抽屉面板外，左） | (27.0, 1.0, 10.3) | 新 |
+| T15 | 1F/Reception/FrontDesk/Text_T15_CaseReport（抽屉面板外，右） | (27.6, 1.0, 10.3) | 新 |
+| T9 | 1F/PowerRoom/Text_T9_ServiceSheet（西墙） | (24.1, 1.8, 15.1) | 新 |
+| T10 | 1F/CostumeHall/LilyDress_Case/Label_T10（补回碰撞） | (53.3, 0.25, 2.2) | 复用 |
+| T6_1 | 2F/Gallery/DisplayCase_Cover_1/Text_T6_1_StudioNote1（柜身北面） | (20.6, 9.8, 24.9) | 新 |
+| T11 | 2F/Gallery/DisplayCase_Cover_2/Text_T11_Clippings（南面） | (31.2, 9.8, 22.8) | 新 |
+| T6_2 | 2F/Gallery/DisplayCase_Cover_3/Text_T6_2_StudioNote2（南面） | (20.6, 9.8, 15.1) | 新 |
+| T6_3 | 2F/Gallery/DisplayCase_Cover_5/Text_T6_3_StudioNote3（北面） | (20.6, 9.8, 9.8) | 新 |
+| T2 | 2F/FamilyRoom/FamilyPortrait_Easel/Text_T2_PortraitLabel（右腿正面） | (42.6, 9.8, 19.7) | 新 |
+| T3 | 2F/FamilyRoom/Text_T3_MuseumLabel（北墙，防尘布东侧） | (54.4, 10.8, 26.3) | 新 |
+| T6_4 | 2F/FamilyRoom/Text_T6_4_LastPage（放在 Text_T6_4_Stand 小展台上） | (54.4, 10.2, 26.0) | 新 |
+| T12 | 2F/FamilyRoom/Pickup_FlowerAndNote | (42.1, 9.0, 19.2) | 复用 |
+| T7 | 2F/DutyRoom/A_HandoverLog | (8.1, 10.0, 13.0) | 复用 |
+| T8 | 2F/DutyRoom/Text_T8_NightRules（东墙，门北边） | (17.9, 10.8, 9.1) | 新 |
+| T13 | 2F/DutyRoom/Text_T13_StockForm（桌面文件夹） | (10.1, 10.0, 13.0) | 新 |
+| T16 | 2F/DutyRoom/Text_T16_DeathRuling（桌面文件夹） | (10.9, 10.0, 13.2) | 新 |
+
+- 长廊的纸贴在柜身镶板外面，不放玻璃罩顶（顶面放大后 1.96 m，孩子眼高 1.15 m，看不见也扫不到）。贴哪一面避开了画中人站的那一侧。第 4 个展柜顶上的画室门票没动。
+
+### 写回手改（备份 `Docs/Backup/2026-10-30_before_familyportrait/`）
+- 人群不生成 `NPC_Garments_E12_0`、`NPC_Vitrine_Pendant_1`、`NPC_StatueOfLiberty_1`（`CrowdRemoved`）。站位照算、照样占位，其余人位置不变。
+- `NPC_LilyDress_Case_0` 挪到 (34.27, 9.66)，朝向 −45.4°（`CrowdMoved`，高度不变）。
+- 黑屋画架 `FamilyPortraitSketch_Easel` 不要后腿（`AddEasel(..., backLeg: false)`），二楼的画架照旧。
+- 服装厅西北角绳围人台：`Props_Museum/1F/CostumeHall/RopedMannequins_NW`，5 个无衣无脖人台（朝向 90°）+ 两段立柱红绳（x 28.78，z 22.58–25.28；z ≈ 22.69，x 26.26–28.75）。原来手摆在 `Threats_Placeholder/Mannequin_Top` 下，现在是独立的静态物体，每块都有 BoxCollider，导航网格按物理碰撞烘焙会绕开。也放在人群之后。
+- 巡逻人台 `Mannequin_Top` 的 A 点从 (28.7, 22.8) 东移到 (29.45, 22.8)，否则起点压在绳子上（巡逻是直线移动，不看碰撞）。B 点不变。人群禁区那条线仍按 28.7 算（不动现有站位），只是多挡 0.75 m。
+- `Mannequin_Top` 在场景里手改的起点没写回（运行时巡逻会覆盖）。
+
+### 10-30 第一次 Play 反馈后的修改
+- 黑屋出生点 `CP0_BlackRoom_Start` 从画架前 1.6 改成 2.4（放大前），主菜单视角能看到整幅《全家福》，顶部不再被裁。
+- 新加的文本（T2、T3、T5、T6_1–T6_4、T8、T9、T11、T13–T16）放大到原来的约 1.5 倍，改成「深色底板 `M_TextBoard` + 偏暗纸面 `M_TextPaper`」（`Framed()`）。原因：手电近距离直照时，浅色纸和浅色台面一起过曝，分不出来。复用的现有物体（T1、T4、T7、T10、T12）没动。
+
+## 10-30 交互提示：交互物组件核对
+- 场景现有交互物：正门 `DoubleDoor` ×1，便签 `TextPickup` ×19，都带碰撞体。
+- 补上：`Toilet/Pickup_Flashlight` 挂 `FlashlightPickup`（Gameplay 写的），用自身 BoxCollider 被准星命中。需重新生成才进场景。
+- 画作不做交互（老大 10-30 定）。
+- 生成前备份：`Docs/Backup/2026-10-30_before_regen3/`。
+
+## 10-30 场景切换：触发器与组件
+
+按 Interfaces.md「场景切换与检查点」「Threats ← 状态」挂组件，全部在 GrayboxBuilder.cs 里生成（坐标为放大前 1 倍值，实际 ×1.4）。
+- `FamilyPortrait_Easel`：挂 `FamilyPortraitExit`（碰撞体用画架子物体，交互检测是 GetComponentInParent）。
+- `EmptyFrame_SecondVisit/Trigger_EmptyFrame`：isTrigger 盒，盖住框内 2.5×1.8（y 0.3–2.1）并向黑屋侧多 0.5 m；`StateTrigger` step = EmptyFrame。
+- `Triggers_Flow/Trigger_PowerOut_Stairs`：楼梯平台（"中段"）整块，x 13.15–15.5、z 21.15–25.85、平台面 y 2.7 往上 2 m；step = PowerOut。
+- `--- Spawns ---/CP_PowerOut_Stairs`：(14.3, 2.72, 22.3)，朝东（yaw 90，第二跑上楼方向）；不进调试 F 键列表。
+- `Door_Duty_MagLock`：挂 `MagLockDoor`，slide = (0, 0, −1.68)。门在 x = 13 的墙里、沿 Z 宽 1.2 m（z 2.4–3.6），往南滑一个门宽缩进墙里，门洞全空；默认 −1 不够门宽（且没乘 1.4）。
+- `A_MonitorWall`：挂 `MonitorTerminal`（自带 BoxCollider）。
+- `Threats_Placeholder/PaintingFigure_A`、`PaintingFigure_B`：挂 `PaintingFigure`；占位胶囊没有子物体，stillVisual/outVisual 未填。
+- 触发盒是空物体 + isTrigger BoxCollider（无渲染），加 NavMeshModifier ignoreFromBuild，不进天使的一层 NavMesh。
+- 备份：`Docs/Backup/2026-10-30_before_regen4/`（GrayboxBuilder.cs.txt、Graybox.unity.txt）。待 Unity 里重新生成后验证。

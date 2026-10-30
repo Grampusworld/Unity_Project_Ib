@@ -36,6 +36,8 @@ namespace Ib.Interaction
         public bool IsLocked => locked;
 
         public string Prompt => prompt;
+
+        public InteractKind Kind => InteractKind.Door;
         public bool CanInteract => !locked && state == State.Closed;
 
         private State state = State.Closed;
