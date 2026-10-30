@@ -1,5 +1,7 @@
+using System;
 using Ib.Player;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Ib.Environment
 {
@@ -11,6 +13,9 @@ namespace Ib.Environment
     public static class MuseumLights
     {
         public static bool On { get; private set; } = true;
+
+        /// <summary>开关灯之后通知（参数 = 现在是否亮着）。水晶灯用它来熄灭灯泡、开始摇晃。</summary>
+        public static event Action<bool> Changed;
 
         public static void Toggle() => Set(!On);
 
@@ -44,6 +49,8 @@ namespace Ib.Environment
                     }
                 }
             }
+
+            Changed?.Invoke(on);
         }
     }
 }

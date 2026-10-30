@@ -24,6 +24,22 @@ namespace Ib.EditorTools
         private const string PlayerPrefabPath = "Assets/Prefabs/Player.prefab";
         private const string NavMeshDataPath = "Assets/Scenes/Graybox_NavMesh_1F.asset";
 
+        /// <summary>一层巡逻环线（按 1 倍坐标写，用时乘 WorldScale）。人群站位也要避开这条线。</summary>
+        public static readonly Vector3[] PatrolPoints =
+        {
+            new Vector3(15.5f, 0f, 17.5f),   // 雕塑厅西北
+            new Vector3(11.5f, 0f, 15f),     // 雕塑厅 → 油画厅门
+            new Vector3(6.5f, 0f, 21f),      // 油画厅北
+            new Vector3(6.5f, 0f, 5f),       // 油画厅南
+            new Vector3(14.5f, 0f, 4.5f),    // 油画厅 → 接待厅门
+            new Vector3(19.5f, 0f, 5.5f),    // 接待厅中
+            new Vector3(27.5f, 0f, 4.5f),    // 接待厅 → 服装厅门
+            new Vector3(33f, 0f, 4f),        // 服装厅南
+            new Vector3(33f, 0f, 21.5f),     // 服装厅北
+            new Vector3(24.5f, 0f, 15f),     // 服装厅 → 雕塑厅门
+            new Vector3(19.5f, 0f, 23f),     // 楼梯厅
+        };
+
         private const float PlinthTop = 0.4f;   // GrayboxBuilder 的展台：1.2 × 0.4 × 1.2
 
         // 模型统一 1.9 m 高（导出时定的），再整体放大到 1.2 倍
@@ -204,20 +220,7 @@ namespace Ib.EditorTools
             so.ApplyModifiedPropertiesWithoutUndo();
 
             // 一层环线（坐标见 GrayboxBuilder 尺寸常量）：雕塑厅西 → 油画厅 → 接待厅 → 服装厅 → 雕塑厅东 → 楼梯厅
-            Vector3[] points =
-            {
-                new Vector3(15.5f, 0f, 17.5f),   // 雕塑厅西北
-                new Vector3(11.5f, 0f, 15f),     // 雕塑厅 → 油画厅门
-                new Vector3(6.5f, 0f, 21f),      // 油画厅北
-                new Vector3(6.5f, 0f, 5f),       // 油画厅南
-                new Vector3(14.5f, 0f, 4.5f),    // 油画厅 → 接待厅门
-                new Vector3(19.5f, 0f, 5.5f),    // 接待厅中
-                new Vector3(27.5f, 0f, 4.5f),    // 接待厅 → 服装厅门
-                new Vector3(33f, 0f, 4f),        // 服装厅南
-                new Vector3(33f, 0f, 21.5f),     // 服装厅北
-                new Vector3(24.5f, 0f, 15f),     // 服装厅 → 雕塑厅门
-                new Vector3(19.5f, 0f, 23f),     // 楼梯厅
-            };
+            Vector3[] points = PatrolPoints;
 
             for (int i = 0; i < points.Length; i++)
             {

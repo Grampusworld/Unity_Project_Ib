@@ -40,6 +40,14 @@ namespace Ib.Core
                 }
             }
 
+            // F10：全馆断电 / 来电（水晶灯熄灭后会开始摇晃）
+            if (keyboard[Key.F10].wasPressedThisFrame)
+            {
+                MuseumLights.Toggle();
+                Debug.Log("[DebugSpawnSwitcher] 全馆灯光 → " + (MuseumLights.On ? "开" : "关"));
+                return;
+            }
+
             int count = Mathf.Min(points.Length, Keys.Length);
             for (int i = 0; i < count; i++)
             {

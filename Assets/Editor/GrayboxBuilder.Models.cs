@@ -455,59 +455,6 @@ namespace Ib.EditorTools
             return g;
         }
 
-        // ================================================================ 二层长廊展柜
-
-        /// <summary>
-        /// 长廊展柜（GDD 的 5 组掩体）：1.0 m 高的深色木柜身 + 0.4 m 玻璃罩，里面摆旧信件、速写本、钢笔。
-        /// 整体放大 WorldScale 后柜身约 1.4 m，比 1.3 m 的孩子高 —— 不用蹲也能藏住（游戏里没有蹲）。
-        /// 玻璃罩在 Ignore Raycast 层，不挡视线判定。
-        /// </summary>
-        private static void GalleryVitrine(Transform parent, string name, float x, float y, float z, int seed)
-        {
-            Transform g = NewGroup(parent, name, new Vector3(x, y, z), 0f);
-            Vector3 size = new Vector3(2.9f, 1.4f, 0.95f);
-            const float bodyH = 1.0f;
-
-            AddBox(g, "Body", new Vector3(0f, bodyH * 0.5f, 0f), new Vector3(size.x, bodyH, size.z), Finishes.Wainscot);
-            LocalBox(g, "Kick", new Vector3(0f, 0.05f, 0f), new Vector3(size.x + 0.02f, 0.1f, size.z + 0.02f), Finishes.Trim);
-            LocalBox(g, "Top_Trim", new Vector3(0f, bodyH - 0.015f, 0f), new Vector3(size.x + 0.04f, 0.03f, size.z + 0.04f), Finishes.Brass);
-            // 柜身正反两面各三块凸起的镶板
-            for (int side = -1; side <= 1; side += 2)
-            {
-                for (int i = 0; i < 3; i++)
-                {
-                    LocalBox(g, "Panel", new Vector3((i - 1) * 0.92f, 0.56f, side * (size.z * 0.5f + 0.008f)), new Vector3(0.78f, 0.62f, 0.016f), Finishes.Trim);
-                }
-            }
-
-            GameObject glass = AddBox(g, "Glass", new Vector3(0f, bodyH + 0.2f, 0f), new Vector3(size.x - 0.04f, 0.4f, size.z - 0.04f), Finishes.GlassClear);
-            glass.layer = IgnoreRaycastLayer;
-            glass.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
-            for (int sx = -1; sx <= 1; sx += 2)
-            {
-                for (int sz = -1; sz <= 1; sz += 2)
-                {
-                    LocalBox(g, "Edge_V", new Vector3(sx * (size.x * 0.5f - 0.02f), bodyH + 0.2f, sz * (size.z * 0.5f - 0.02f)), new Vector3(0.02f, 0.4f, 0.02f), Finishes.Brass);
-                }
-            }
-
-            LocalBox(g, "Edge_Top", new Vector3(0f, size.y - 0.01f, 0f), new Vector3(size.x - 0.04f, 0.02f, 0.02f), Finishes.Brass);
-
-            // 展品：深色丝绒垫 + 几张发黄的信纸 + 一本速写本 + 一支钢笔
-            LocalBox(g, "Velvet", new Vector3(0f, bodyH + 0.006f, 0f), new Vector3(size.x - 0.12f, 0.012f, size.z - 0.12f), Finishes.Velvet);
-            for (int i = 0; i < 3; i++)
-            {
-                GameObject paper = LocalBox(g, "Letter_" + i, new Vector3(-0.9f + i * 0.35f + seed * 0.05f, bodyH + 0.014f + i * 0.002f, -0.05f + (i % 2) * 0.1f),
-                    new Vector3(0.21f, 0.003f, 0.29f), Kit.Paper);
-                paper.transform.localRotation = Quaternion.Euler(0f, -12f + i * 11f + seed * 7f, 0f);
-            }
-
-            GameObject book = LocalBox(g, "Sketchbook", new Vector3(0.55f, bodyH + 0.03f, 0.05f), new Vector3(0.32f, 0.04f, 0.24f), Kit.Book);
-            book.transform.localRotation = Quaternion.Euler(0f, 8f - seed * 5f, 0f);
-            GameObject pen = LocalCylinder(g, "Pen", new Vector3(1.05f, bodyH + 0.02f, -0.1f), 0.012f, 0.14f, Finishes.MetalDark);
-            pen.transform.localRotation = Quaternion.Euler(90f, 30f + seed * 10f, 0f);
-        }
-
         // ================================================================ 接待厅前台
 
         /// <summary>
@@ -675,22 +622,6 @@ namespace Ib.EditorTools
             LocalBox(g, "Lantern_Glow", new Vector3(0.31f, 1.64f, 0.34f), new Vector3(0.1f, 0.12f, 0.15f), Finishes.LampShade);
         }
 
-        /// <summary>《跪者》：跪在地上，上身前倾，头埋进手里。</summary>
-        private static void KneelingFigure(Transform parent, Vector3 basePos, float yaw)
-        {
-            ModelKit k = Kit;
-            Transform g = NewGroup(parent, "Statue", basePos, yaw);
-            MeshObject(g, "Body", k.KneelBase, k.Stone, Vector3.zero, Vector3.one);
-            GameObject torso = MeshObject(g, "Torso", k.KneelTorso, k.Stone, new Vector3(0f, 0.5f, -0.05f), Vector3.one);
-            torso.transform.localRotation = Quaternion.Euler(32f, 0f, 0f);
-            LocalSphere(g, "Head", new Vector3(0f, 0.98f, 0.33f), new Vector3(0.19f, 0.23f, 0.21f), k.Stone);
-            for (int side = -1; side <= 1; side += 2)
-            {
-                GameObject arm = LocalCylinder(g, side < 0 ? "Arm_L" : "Arm_R", new Vector3(side * 0.13f, 0.86f, 0.3f), 0.09f, 0.45f, k.Stone);
-                arm.transform.localRotation = Quaternion.Euler(-60f, 0f, side * -12f);
-            }
-        }
-
         // ================================================================ 门前通道检查
 
         /// <summary>
@@ -700,7 +631,7 @@ namespace Ib.EditorTools
         {
             List<WallPiece> walls = CollectWallPieces(museum);
             List<Collider> props = new List<Collider>();
-            foreach (string root in new[] { "Props_Museum", "Artworks" })
+            foreach (string root in new[] { "Props_Museum", "Artworks", "NPC_Crowd" })
             {
                 GameObject go = GameObject.Find(root);
                 if (go != null)

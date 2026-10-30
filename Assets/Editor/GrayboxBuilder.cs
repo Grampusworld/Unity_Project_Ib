@@ -233,6 +233,9 @@ namespace Ib.EditorTools
 
             // 踢脚线 / 护墙板 / 墙裙 / 挂镜线 / 檐口 / 壁柱 / 门套 / 梁 / 柱 / 地面拼花（GrayboxBuilder.Detail.cs）
             BuildArchitectureDetail(museum, p);
+
+            // 画中馆人群站位（白色圆柱，GrayboxBuilder.Crowd.cs）：要等墙、道具、展品都放好，按碰撞找空位
+            BuildCrowd(exhibits, museum);
             CheckDoorClearance(museum);
 
             GameObject blackRoom = BuildBlackRoom(p);
@@ -430,7 +433,9 @@ namespace Ib.EditorTools
                 float xMax = StairLandingEastX + k * StairTread;
                 float top = Floor1Y + landingY + k * StairRise;
                 AddSlab(flight2, "Step_" + k, xMin, xMax, southZ0, dividerZ0, top - StairTreadThickness, top, p.Stair);
-                AddSlab(flight2, "Rail_" + k, xMin, xMax, southZ0, southZ0 + 0.08f, top, top + RailHeight, p.Prop);
+                // 用户 10-28 手调：栏杆换石材；最上面几段截到二层地面以下，不从楼板里冒出来
+                float railTop = Mathf.Min(top + RailHeight, Floor2Y - 0.009f);
+                AddSlab(flight2, "Rail_" + k, xMin, xMax, southZ0, southZ0 + 0.08f, top, railTop, Finishes.StoneWorn);
             }
 
             // 两跑之间的隔墙，顶到二层栏杆高度
@@ -466,7 +471,7 @@ namespace Ib.EditorTools
             Transform sculpture = NewGroup(root, "SculptureHall");
             Vector3 angelPos = SculptureCenter();
             float[,] corners = { { 14.8f, 10.8f }, { 24.2f, 10.8f }, { 14.8f, 19.4f }, { 24.2f, 19.4f } };
-            string[] cornerNames = { "TheLanternBearer", "TheKneeling", "Untitled_I", "Untitled_II" };
+            string[] cornerNames = { "TheLanternBearer", "Moai", "Untitled_I", "Untitled_II" };
             for (int i = 0; i < 2; i++)
             {
                 Transform s = NewGroup(sculpture, "Sculpture_" + cornerNames[i]);
@@ -475,13 +480,10 @@ namespace Ib.EditorTools
                 Vector3 toCenter = angelPos - new Vector3(corners[i, 0], y, corners[i, 1]);
                 float faceYaw = Mathf.Atan2(toCenter.x, toCenter.z) * Mathf.Rad2Deg;
                 Vector3 top = new Vector3(corners[i, 0], y + 0.6f, corners[i, 1]);
+                // 东南角原来的《跪者》换成了摩艾石像（Artworks 表），这里只留底座
                 if (i == 0)
                 {
                     LanternBearer(s, top, faceYaw);
-                }
-                else
-                {
-                    KneelingFigure(s, top, faceYaw);
                 }
             }
 
@@ -1183,7 +1185,7 @@ namespace Ib.EditorTools
                     continue;
                 }
 
-                b.Expand(0.5f);
+                b.Expand(1.0f);   // Expand 是总尺寸，每边 0.5 m
                 fixtures.Add(b);
             }
 

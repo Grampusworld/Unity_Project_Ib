@@ -69,6 +69,8 @@ namespace Ib.EditorTools
             // 雕塑厅北侧两角的雕像（放在放大的底座上）
             new ArtSpot("MonaLisaStatue", "Statues/MonaLisaStatue", 15.006f, 0.758f, 18.828f, 120.8f, 0.800f, 0),
             new ArtSpot("StatueOfLiberty", "Statues/StatueOfLiberty", 24.127f, 0.738f, 19.266f, 0f, 1.600f, 0),
+            // 雕塑厅东南角：复活节岛摩艾石像（Blender 程序化建模 Statues/build_moai.py），站在原《跪者》的底座上，面朝大厅中央的天使
+            new ArtSpot("Moai", "Statues/Moai", 24.2f, 0.6f, 10.8f, -48.2f, 1.9f, 0),
         };
 
         private static List<Exhibit> PlaceArtworks()
@@ -163,9 +165,19 @@ namespace Ib.EditorTools
                     continue;
                 }
 
-                if (r.name == "Body" && !r.transform.parent.name.StartsWith("Sculpture_"))
+                // 角落雕像：Body 在 Sculpture_xxx/Statue 下面；清洁车、灭火器、监控也叫 Body，跳过
+                Transform owner = r.transform.parent;
+                if (r.name == "Body")
                 {
-                    continue;   // 清洁车、灭火器、监控也叫 Body
+                    if (owner.name == "Statue" && owner.parent != null)
+                    {
+                        owner = owner.parent;
+                    }
+
+                    if (!owner.name.StartsWith("Sculpture_"))
+                    {
+                        continue;
+                    }
                 }
 
                 bool hidden = false;
@@ -182,7 +194,13 @@ namespace Ib.EditorTools
 
                 if (!hidden)
                 {
-                    list.Add(new Exhibit { Name = r.transform.parent.name + "_" + r.name, B = r.bounds, Normal = normal });
+                    Bounds eb = r.bounds;
+                    if (r.name == "Body")
+                    {
+                        eb = WorldBounds(owner.gameObject);   // 整座雕像连底座
+                    }
+
+                    list.Add(new Exhibit { Name = owner.name + "_" + r.name, B = eb, Normal = normal });
                 }
                 else
                 {
@@ -213,14 +231,15 @@ namespace Ib.EditorTools
             Model(rec, "10_armchair", 23.4f, y1, 0.92f, 160f, 1f, true);
             Model(rec, "11_round_side_table", 24.3f, y1, 0.55f, 0f, 1f, true);
             Model(rec, "12_brush_jar", 24.3f, y1 + 0.62f, 0.55f, 0f, 1f, false);
-            exhibits.Add(Pedestal(rec, "Pedestal_Vase", 13.75f, y1, 8.25f, "02_blue_white_vase"));
+            exhibits.Add(Pedestal(rec, "Pedestal_Vase", 13.75f, y1, 8.25f, "02_blue_white_vase", 1.3f));   // 用户 10-28 手调：梅瓶放大 1.3 倍
             exhibits.Add(Pedestal(rec, "Pedestal_GlassSculpture", 25.25f, y1, 8.25f, "05_cast_glass_sculpture"));
 
             // ---- 油画厅：三张长凳对着大画，大画前拉隔离绳 ----
             Transform oil = NewGroup(root, "OilHall");
-            Model(oil, "09_museum_bench", 4.0f, y1, 8.8f, 90f, 1f, true);
-            Model(oil, "09_museum_bench", 4.0f, y1, 18.6f, 90f, 1f, true);
-            Model(oil, "09_museum_bench", 9.4f, y1, 21.0f, 90f, 1f, true);
+            // 用户 10-28 手调：长凳挪到南墙下（门两边各一张，放大 1.1 倍），中间第三张删掉
+            Model(oil, "09_museum_bench", 4.34f, y1, 0.58f, -2f, 1.1f, true);
+            Model(oil, "09_museum_bench", 8.545f, y1, 0.549f, 181.9f, 1.1f, true);
+            DressOilHall(oil);   // 水晶吊灯、红地毯、绿植、语音导览架、导言牌（GrayboxBuilder.OilHall.cs）
             Stanchions(oil, "Rope_GirlWithPearl", y1, new Vector3(1.25f, 0f, 1.0f), new Vector3(1.25f, 0f, 4.9f), 3);
             Stanchions(oil, "Rope_Lady", y1, new Vector3(1.25f, 0f, 7.0f), new Vector3(1.25f, 0f, 10.65f), 3);
             Stanchions(oil, "Rope_LastSupper", y1, new Vector3(1.25f, 0f, 13.2f), new Vector3(1.25f, 0f, 24.0f), 5);
@@ -323,13 +342,13 @@ namespace Ib.EditorTools
         }
 
         /// <summary>石材展台 + 顶上一件小展品。</summary>
-        private static Exhibit Pedestal(Transform parent, string name, float x, float y, float z, string model)
+        private static Exhibit Pedestal(Transform parent, string name, float x, float y, float z, string model, float modelScale = 1f)
         {
             Transform g = NewGroup(parent, name);
             AddProp(g, "Base", x, y, z, 0.6f, 0.1f, 0.6f, Finishes.StoneWorn);
             AddProp(g, "Column", x, y + 0.1f, z, 0.46f, 0.8f, 0.46f, Finishes.StoneWorn);
             AddProp(g, "Top", x, y + 0.9f, z, 0.56f, 0.1f, 0.56f, Finishes.StoneWorn);
-            GameObject item = Model(g, model, x, y + 1.0f, z, 0f, 1f, false);
+            GameObject item = Model(g, model, x, y + 1.0f, z, 0f, modelScale, false);
             Bounds b = WorldBounds(item);
             return new Exhibit { Name = name, B = b, Normal = Vector3.zero };
         }
@@ -394,17 +413,6 @@ namespace Ib.EditorTools
             return go;
         }
 
-        private static void FireExtinguisher(Transform parent, string name, Vector3 wallPoint, Vector3 normal)
-        {
-            Transform g = NewGroup(parent, name);
-            Vector3 c = wallPoint + normal * 0.13f;
-            RemoveCollider(AddBox(g, "Bracket", wallPoint + normal * 0.03f + Vector3.up * 0.55f, Abs(normal) * 0.04f + Perp(normal) * 0.12f + Vector3.up * 0.5f, Finishes.MetalDark));
-            Cylinder(g, "Body", c + Vector3.up * 0.55f, 0.17f, 0.52f, Finishes.RedPaint, true);
-            Cylinder(g, "Valve", c + Vector3.up * 0.86f, 0.06f, 0.1f, Finishes.MetalDark, false);
-            RemoveCollider(AddBox(g, "Hose", c + normal * 0.09f + Vector3.up * 0.62f, new Vector3(0.025f, 0.38f, 0.025f), Finishes.MetalDark));
-            RemoveCollider(AddBox(g, "Sign", wallPoint + normal * 0.008f + Vector3.up * 1.25f, Abs(normal) * 0.012f + Perp(normal) * 0.2f + Vector3.up * 0.2f, Finishes.RedPaint));
-        }
-
         private static void ExitSign(Transform parent, string name, Vector3 wallPoint, Vector3 normal)
         {
             Transform g = NewGroup(parent, name);
@@ -432,35 +440,6 @@ namespace Ib.EditorTools
             {
                 Object.DestroyImmediate(c);
             }
-        }
-
-        private static void CleaningCart(Transform parent, float x, float y, float z)
-        {
-            Transform g = NewGroup(parent, "CleaningCart");
-            AddProp(g, "Body", x, y + 0.12f, z, 0.95f, 0.75f, 0.5f, Finishes.Plastic);
-            RemoveCollider(AddProp(g, "Handle", x - 0.5f, y + 0.6f, z, 0.04f, 0.45f, 0.45f, Finishes.MetalDark));
-            Cylinder(g, "Bucket", new Vector3(x + 0.2f, y + 0.87f + 0.13f, z), 0.34f, 0.26f, Finishes.WarningYellow, false);
-            for (int i = 0; i < 4; i++)
-            {
-                float wx = x + (i < 2 ? -0.38f : 0.38f);
-                float wz = z + (i % 2 == 0 ? -0.2f : 0.2f);
-                GameObject wheel = Cylinder(g, "Wheel_" + i, new Vector3(wx, y + 0.06f, wz), 0.12f, 0.04f, Finishes.MetalDark, false);
-                wheel.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
-            }
-
-            GameObject mop = Cylinder(g, "Mop", new Vector3(x + 0.15f, y + 1.15f, z + 0.05f), 0.03f, 1.4f, Finishes.CrateWood, false);
-            mop.transform.rotation = Quaternion.Euler(0f, 0f, 12f);
-        }
-
-        private static void WetFloorSign(Transform parent, float x, float y, float z, float yaw)
-        {
-            Transform g = NewGroup(parent, "WetFloorSign", new Vector3(x, y, z), yaw);
-            GameObject a = AddBox(g, "Front", new Vector3(0f, 0.3f, 0.09f), new Vector3(0.3f, 0.62f, 0.015f), Finishes.WarningYellow);
-            a.transform.localRotation = Quaternion.Euler(-16f, 0f, 0f);
-            GameObject b = AddBox(g, "Back", new Vector3(0f, 0.3f, -0.09f), new Vector3(0.3f, 0.62f, 0.015f), Finishes.WarningYellow);
-            b.transform.localRotation = Quaternion.Euler(16f, 0f, 0f);
-            RemoveCollider(a);
-            RemoveCollider(b);
         }
 
         private static void Crate(Transform parent, string name, float x, float y, float z, float size, float yaw)
@@ -576,6 +555,7 @@ namespace Ib.EditorTools
             GameObject lens = Cylinder(g, "Lens", pos - dir * 0.005f, 0.12f, 0.01f, Finishes.LampShade, false);
             lens.transform.rotation = along;
             lens.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
+            AddLampGlow(g.gameObject, lens.GetComponent<Renderer>());
 
             Vector3 back = pos - dir * 0.24f;
             if (ceilingY - back.y > 0.02f)
@@ -627,6 +607,16 @@ namespace Ib.EditorTools
             shade.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
             GameObject cap = Cylinder(g, "Cap", pos + Vector3.up * 0.19f, 0.2f, 0.04f, Finishes.Brass, false);
             cap.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
+            AddLampGlow(g.gameObject, shade.GetComponent<Renderer>());
+        }
+
+        /// <summary>断电时灯罩 / 镜片一起熄灭（LampGlow 监听 MuseumLights）。</summary>
+        private static void AddLampGlow(GameObject owner, Renderer glow)
+        {
+            Ib.Environment.LampGlow lg = owner.AddComponent<Ib.Environment.LampGlow>();
+            SetRefArray(lg, "glows", new List<Renderer> { glow });
+            SetRef(lg, "onMaterial", Finishes.LampShade);
+            SetRef(lg, "offMaterial", OilKit.BulbOff);
         }
 
         // ================================================================ 浮尘
@@ -656,6 +646,12 @@ namespace Ib.EditorTools
 
             exhibits.AddRange(ReplaceWithPainting(props, art, "Masterpiece_W2", "Painting_Scream", Vector3.right));
             exhibits.AddRange(ReplaceWithPainting(props, art, "Masterpiece_W3", "Painting_NapoleonCrossingAlps", Vector3.right));
+            // 用户 10-28 手调：《拿破仑》的画布往外推 3.5 cm（放大后约 5 cm），不让画框边压住画面
+            Transform napoleonCanvas = FindDeep(art, "Painting_NapoleonCrossingAlps_Canvas");
+            if (napoleonCanvas != null)
+            {
+                napoleonCanvas.position += Vector3.right * 0.035f;
+            }
 
             PaintBoard(props, "Masterpiece_W1_EmptyFrameA", Finishes.CanvasPortrait, gilt, Vector3.right, 0.14f);
             PaintBoard(props, "Masterpiece_E3_EmptyFrameB", Finishes.CanvasLandscape, gilt, Vector3.left, 0.14f);
