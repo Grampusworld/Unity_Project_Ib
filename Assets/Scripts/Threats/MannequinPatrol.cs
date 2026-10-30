@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Ib.Core;
 using Ib.Environment;
 using Ib.Flow;
+using Ib.Player;
 using UnityEngine;
 
 namespace Ib.Threats
@@ -10,7 +11,7 @@ namespace Ib.Threats
     /// 会动的人台（GDD §5 服装厅）：沿自己的 WaypointPath 匀速往返，不转向玩家、不加速。
     /// 默认不动 —— 按 GDD 要等"拿起手电"那一刻才出动，条件见 ThreatSchedule.CollectionOut。
     /// 死亡重生（GameOverScreen.Continued）时回到原位，再按当前状态重设开关。
-    /// 现在只负责移动和朝向；"碰到就被收走"的判定以后在这里加。
+    /// 出动以后碰到玩家（水平距离 ≤ catchDistance、同一层）= 被收走，Game Over（GDD §3.4）。
     /// 调试：Inspector 里勾 startActive，或组件右键菜单「切换移动」。
     /// </summary>
     [DisallowMultipleComponent]
@@ -25,6 +26,7 @@ namespace Ib.Threats
         [SerializeField, Min(0.05f)] private float speed = 0.7f;
         [SerializeField, Min(0f)] private float turnSpeed = 180f;
         [SerializeField] private bool startActive;
+        [SerializeField, Min(0.1f)] private float catchDistance = 0.75f;
 
         public bool IsActive { get; private set; }
 
@@ -33,6 +35,7 @@ namespace Ib.Threats
 
         private int target = 1;
         private int step = 1;
+        private FirstPersonController player;
         private Vector3 homePosition;
         private Quaternion homeRotation;
 
@@ -111,6 +114,38 @@ namespace Ib.Threats
 
             Quaternion face = Quaternion.LookRotation(dir, Vector3.up);
             transform.rotation = Quaternion.RotateTowards(transform.rotation, face, turnSpeed * Time.deltaTime);
+
+            CheckTouch();
+        }
+
+        private void CheckTouch()
+        {
+            if (GameOverScreen.IsShowing || !ThreatSchedule.CollectionOut)
+            {
+                return;
+            }
+
+            if (player == null)
+            {
+                player = FindAnyObjectByType<FirstPersonController>();
+                if (player == null)
+                {
+                    return;
+                }
+            }
+
+            Vector3 d = player.transform.position - transform.position;
+            if (Mathf.Abs(d.y) > 2f)
+            {
+                return;
+            }
+
+            d.y = 0f;
+            if (d.magnitude <= catchDistance)
+            {
+                Debug.Log("[MannequinPatrol] 碰到玩家 → GAME OVER。", this);
+                GameOverScreen.Show();
+            }
         }
 
         private void AdvanceTarget()

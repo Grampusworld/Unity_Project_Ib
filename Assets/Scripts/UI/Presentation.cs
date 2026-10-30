@@ -44,6 +44,21 @@ namespace Ib.UI
             if (Ready(nameof(FadeFromBlack))) root.Fader.FadeTo(0f, seconds, onDone);
         }
 
+        /// <summary>确认窗是否打开（正门开门确认）。</summary>
+        public static bool IsConfirming => root != null && root.Confirm.IsOpen;
+
+        /// <summary>纸面确认窗：一句问题 + 两个按钮，Esc 等于选否。调用方负责锁控制、放光标。</summary>
+        public static void Confirm(string question, string yes, string no, Action onYes, Action onNo)
+        {
+            if (Ready(nameof(Confirm))) root.Confirm.Open(question, yes, no, onYes, onNo);
+        }
+
+        /// <summary>结局字幕：全黑底，标题 + 逐段淡入的正文，按任意键（或自动）结束后调 onDone。</summary>
+        public static void ShowEnding(string title, string[] lines, Action onDone)
+        {
+            if (Ready(nameof(ShowEnding))) root.Ending.Show(title, lines, onDone);
+        }
+
         /// <summary>本局读过的文本，按第一次读的顺序。暂停菜单 Texts 页用。</summary>
         internal static IReadOnlyList<string> ReadTexts => readTexts;
 

@@ -1,4 +1,6 @@
+using Ib.Flow;
 using Ib.Interaction;
+using Ib.UI;
 using UnityEngine;
 
 namespace Ib.Environment
@@ -109,6 +111,13 @@ namespace Ib.Environment
         private void OnDoorOpening()
         {
             SetMuseumLights(true);
+
+            // 第 4 步：推门 = 进入画中馆（全家福只在 PaintedGallery 时能交互）
+            if (GameFlow.State == GameState.BlackRoom)
+            {
+                GameFlow.SetState(GameState.PaintedGallery);
+                GameFlow.ShowHintOnce(HintId.Explore);
+            }
         }
 
         private void Seal()

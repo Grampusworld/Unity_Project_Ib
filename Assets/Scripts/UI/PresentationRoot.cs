@@ -21,6 +21,8 @@ namespace Ib.UI
         public MainMenu Menu { get; private set; }
         public PauseMenu Pause { get; private set; }
         public SettingsPanel Settings { get; private set; }
+        public ConfirmDialog Confirm { get; private set; }
+        public EndingCard Ending { get; private set; }
 
         public static PresentationRoot Create()
         {
@@ -50,8 +52,10 @@ namespace Ib.UI
             Pause = PauseMenu.Create(transform, this);
             Settings = SettingsPanel.Create(transform);
             Reader = TextReader.Create(transform);
+            Confirm = ConfirmDialog.Create(transform);
             Crosshair.Create(transform);
-            Fader = ScreenFader.Create(transform); // 最后建，盖在所有 UI 之上
+            Fader = ScreenFader.Create(transform); // 盖在所有 UI 之上
+            Ending = EndingCard.Create(transform); // 结局字幕在黑幕之上
         }
 
         private void Start() => GameSettings.ApplyAll();
@@ -61,7 +65,9 @@ namespace Ib.UI
             Keyboard kb = Keyboard.current;
             if (kb == null || !kb.escapeKey.wasPressedThisFrame) return;
 
-            if (Reader.IsOpen) Reader.Close();
+            if (Ending.IsShowing) { }
+            else if (Confirm.IsOpen) Confirm.Cancel();
+            else if (Reader.IsOpen) Reader.Close();
             else if (Settings.IsOpen) Settings.Close();
             else if (Menu.IsOpen) { }
             else Pause.EscapePressed();

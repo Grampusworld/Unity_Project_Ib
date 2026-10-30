@@ -1,3 +1,4 @@
+using Ib.Core;
 using Ib.Flow;
 using UnityEngine;
 
@@ -34,6 +35,12 @@ namespace Ib.Interaction
 
         private void OnStateChanged(GameState from, GameState next)
         {
+            // 断电那一刻锁释放的"咔"（GDD §3.6 第 10 步：玩家在楼梯中段远远听见）
+            if (next == GameState.PowerOut && from < GameState.PowerOut)
+            {
+                Sfx.PlayAt(Sfx.PowerClunk, transform.position, 1f, 45f);
+            }
+
             open = IsOpen(next);
             if (!open)
             {

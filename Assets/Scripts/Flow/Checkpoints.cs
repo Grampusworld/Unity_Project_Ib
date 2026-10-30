@@ -16,6 +16,8 @@ namespace Ib.Flow
         public const string PowerOut = "CP_PowerOut_Stairs";
         public const string Flashlight = "CP2_Flashlight_Toilet";
         public const string AngelsActive = "CP3_TaskA_DutyRoom";
+        public const string TaskB = "CP4_TaskB_PowerRoom";
+        public const string TaskC = "CP5_TaskC_FrontDesk";
 
         public static string CurrentName { get; private set; }
 

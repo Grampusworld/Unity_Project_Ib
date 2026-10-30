@@ -31,6 +31,8 @@ namespace Ib.Interaction
 
         private InputAction interactAction;
 
+        private readonly RaycastHit[] hits = new RaycastHit[16];
+
         private void Awake()
         {
             if (cameraTransform == null)
@@ -80,14 +82,31 @@ namespace Ib.Interaction
             }
 
             // 用细球扫而不是射线：正对双开门中缝时射线会从缝里穿过去。
-            // 起点在玩家胶囊里，球扫会忽略起点就重叠的碰撞体，不会打到自己。
+            // 起点在玩家胶囊里：SphereCastNonAlloc 会把起点就重叠的碰撞体以 distance 0 返回，跳过它们，不会打到自己。
+            // NPC 不挡准星（全家福前站着 Grampus），其他碰撞体照常挡：取最近的非 NPC 命中。
             Ray ray = new Ray(cameraTransform.position, cameraTransform.forward);
-            if (!Physics.SphereCast(ray, probeRadius, out RaycastHit hit, reach, mask, QueryTriggerInteraction.Ignore))
+            int count = Physics.SphereCastNonAlloc(ray, probeRadius, hits, reach, mask, QueryTriggerInteraction.Ignore);
+            GameObject crowd = WorldState.Crowd;
+            Collider nearest = null;
+            float nearestDistance = float.MaxValue;
+            for (int i = 0; i < count; i++)
+            {
+                RaycastHit hit = hits[i];
+                if (hit.distance <= 0f || hit.distance >= nearestDistance || (crowd != null && hit.collider.transform.IsChildOf(crowd.transform)))
+                {
+                    continue;
+                }
+
+                nearest = hit.collider;
+                nearestDistance = hit.distance;
+            }
+
+            if (nearest == null)
             {
                 return null;
             }
 
-            IInteractable target = hit.collider.GetComponentInParent<IInteractable>();
+            IInteractable target = nearest.GetComponentInParent<IInteractable>();
             return target != null && target.CanInteract ? target : null;
         }
 

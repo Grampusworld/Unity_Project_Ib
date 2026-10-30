@@ -1,4 +1,5 @@
 using System;
+using Ib.Interaction;
 using Ib.Player;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -25,7 +26,9 @@ namespace Ib.Environment
             Light[] lights = Object.FindObjectsByType<Light>(FindObjectsInactive.Include);
             foreach (Light light in lights)
             {
-                if (light.GetComponentInParent<PlayerFlashlight>(true) != null)
+                // 主角手电和厕所里那盏（停电后才亮）都不跟全馆灯一起关
+                if (light.GetComponentInParent<PlayerFlashlight>(true) != null
+                    || light.GetComponentInParent<FlashlightPickup>(true) != null)
                 {
                     continue;
                 }

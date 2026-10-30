@@ -268,6 +268,8 @@ namespace Ib.EditorTools
 
             // 天使模型、巡逻路线、导航网格、玩家手电：重建场景后都会丢，这里接着补上（它自己会存场景）
             WeepingAngelSetup.Setup();
+            // 后半段的电话、正门锁、工作卡、抽屉、手电落地（GrayboxBuilder.SecondHalf.cs，会再存一次场景）
+            SetupSecondHalf();
 
             Debug.Log("[GrayboxBuilder] 完成：" + ScenePath);
         }
@@ -595,8 +597,9 @@ namespace Ib.EditorTools
             AddWallPanel(toilet, "Mirror", new Vector3(29.0f, y + 1.45f, ToiletNorthZ - HalfWall), Vector3.back, 3.6f, 1.0f, p.Glass);
             BuildToiletFixtures(toilet, y);   // 隔间、洗手台、小便斗等，见 GrayboxBuilder.Models.cs
             AddProp(toilet, "Shelf", 31.0f, y, HalfWall + 0.25f, 1.2f, 0.9f, 0.5f, p.Prop);
-            // 手电：按 E 拿起（GDD §3.6 第 12 步），逻辑在 Gameplay 的 FlashlightPickup，靠自身 BoxCollider 被准星命中
-            AddProp(toilet, "Pickup_Flashlight", 31.0f, y + 0.9f, HalfWall + 0.25f, 0.28f, 0.08f, 0.08f, p.Key)
+            // 手电：按 E 拿起（GDD §3.6 第 12 步），逻辑在 Gameplay 的 FlashlightPickup，靠自身 BoxCollider 被准星命中。
+            // 躺在地上、离门洞 2 m（SetupSecondHalf 会再摆一次，两处保持一致）
+            AddProp(toilet, "Pickup_Flashlight", FlashlightFloorX, y, ToiletDoorZ, 0.28f, 0.08f, 0.08f, p.Key)
                 .AddComponent<FlashlightPickup>();
         }
 

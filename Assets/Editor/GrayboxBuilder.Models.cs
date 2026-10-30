@@ -507,7 +507,7 @@ namespace Ib.EditorTools
         /// <summary>
         /// 厕所（玩家不进隔间，只要看着合理）：东墙一排 3 个隔间（2.0 m 高隔板、离地 15 cm、门关着带把手和红绿指示），
         /// 整排用一个实心碰撞盒封住；北墙镜子下面洗手台 3 个盆；南墙两个小便斗；烘手机、纸巾盒、垃圾桶、地漏、
-        /// 拖把桶 + "暂停使用"牌。手电（南墙架子上）从门口能直接看到，不挡。
+        /// 拖把桶 + "暂停使用"牌。手电躺在门洞正对的地上（SetupSecondHalf），从门口能直接看到，不挡。
         /// </summary>
         private static void BuildToiletFixtures(Transform parent, float y)
         {

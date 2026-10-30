@@ -37,9 +37,11 @@ namespace Ib.Flow
         /// </summary>
         public static bool IsAiming =>
             State != GameState.MainMenu
+            && State != GameState.Ending
             && !IsPaused
             && !GameOverScreen.IsShowing
-            && !Presentation.IsReading;
+            && !Presentation.IsReading
+            && !Presentation.IsConfirming;
 
         /// <summary>(from, to)</summary>
         public static event Action<GameState, GameState> StateChanged;
@@ -52,6 +54,18 @@ namespace Ib.Flow
 
         /// <summary>拿到手电时触发一次。晚订阅的先看 HasFlashlight。</summary>
         public static event Action FlashlightObtained;
+
+        /// <summary>第 8 步：接过一楼前台的电话。没接之前楼梯中段不会断电。</summary>
+        public static bool PhoneAnswered { get; internal set; }
+
+        /// <summary>第 15 步：从配电间保安柜拿到工作卡。</summary>
+        public static bool HasStaffCard { get; internal set; }
+
+        /// <summary>第 16 步：从前台抽屉拿到主门钥匙。</summary>
+        public static bool HasKey { get; internal set; }
+
+        /// <summary>第 17 步：钥匙已经插在正门锁孔里（插上就不拔，真结局的前提）。</summary>
+        public static bool KeyInserted { get; internal set; }
 
         private static readonly HashSet<HintId> shownHints = new HashSet<HintId>();
         private static bool menuRegistered;
@@ -82,7 +96,7 @@ namespace Ib.Flow
         /// <summary>暂停菜单开关由 Presentation 调用。主菜单、Game Over 期间忽略。</summary>
         public static void SetPaused(bool paused)
         {
-            if (paused == IsPaused || State == GameState.MainMenu || GameOverScreen.IsShowing)
+            if (paused == IsPaused || State == GameState.MainMenu || State == GameState.Ending || GameOverScreen.IsShowing)
             {
                 return;
             }
@@ -178,6 +192,10 @@ namespace Ib.Flow
             menuRegistered = false;
             shownHints.Clear();
             HasFlashlight = false;
+            PhoneAnswered = false;
+            HasStaffCard = false;
+            HasKey = false;
+            KeyInserted = false;
             Checkpoints.Reset();
             SceneTransitions.Reset();
             new GameObject("--- GameFlow ---").AddComponent<GameFlowBoot>();

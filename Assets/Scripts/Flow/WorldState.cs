@@ -20,6 +20,9 @@ namespace Ib.Flow
 
         internal static GameObject BlackRoom => blackRoom;
 
+        /// <summary>NPC 人群根节点。交互球扫要穿过人群（全家福前站着 Grampus）。</summary>
+        internal static GameObject Crowd => crowd;
+
         internal static void Cache()
         {
             crowd = frame = blackRoom = null;

@@ -23,6 +23,7 @@ namespace Ib.EditorTools
         private const string StoneMaterialPath = "Assets/Art/Materials/M_Stone_Angel.mat";
         private const string PlayerPrefabPath = "Assets/Prefabs/Player.prefab";
         private const string NavMeshDataPath = "Assets/Scenes/Graybox_NavMesh_1F.asset";
+        private const string NavMesh2FPath = "Assets/Scenes/Graybox_NavMesh_2F.asset";
 
         /// <summary>一层巡逻环线（按 1 倍坐标写，用时乘 WorldScale）。人群站位也要避开这条线。</summary>
         public static readonly Vector3[] PatrolPoints =
@@ -257,18 +258,56 @@ namespace Ib.EditorTools
             surface.layerMask = ~0;
 
             surface.BuildNavMesh();
+            SaveNavMesh(surface, NavMeshDataPath);
+            BakeSecondFloor(go);
+        }
 
-            NavMeshData data = surface.navMeshData;
-            if (data != null)
+        /// <summary>二楼长廊的导航网格，名画人物追击用。体积只罩二楼楼面到天花，不和一层重叠。</summary>
+        private static void BakeSecondFloor(GameObject root)
+        {
+            Transform child = root.transform.Find("NavMesh_2F");
+            GameObject go = child != null ? child.gameObject : new GameObject("NavMesh_2F");
+            if (child == null)
             {
-                if (AssetDatabase.LoadAssetAtPath<NavMeshData>(NavMeshDataPath) != null)
-                {
-                    AssetDatabase.DeleteAsset(NavMeshDataPath);
-                }
-                AssetDatabase.CreateAsset(data, NavMeshDataPath);
-                surface.navMeshData = AssetDatabase.LoadAssetAtPath<NavMeshData>(NavMeshDataPath);
-                EditorUtility.SetDirty(surface);
+                go.transform.SetParent(root.transform, false);
             }
+
+            go.transform.localPosition = Vector3.zero;
+            go.transform.localRotation = Quaternion.identity;
+            go.transform.localScale = Vector3.one;
+
+            NavMeshSurface surface = go.GetComponent<NavMeshSurface>();
+            if (surface == null)
+            {
+                surface = go.AddComponent<NavMeshSurface>();
+            }
+
+            float floorY = 6.4f * GrayboxBuilder.WorldScale;
+            surface.collectObjects = CollectObjects.Volume;
+            surface.center = new Vector3(20f * GrayboxBuilder.WorldScale, floorY + 2.5f, 13f * GrayboxBuilder.WorldScale);
+            surface.size = new Vector3(41f * GrayboxBuilder.WorldScale, 5.2f, 27f * GrayboxBuilder.WorldScale);
+            surface.useGeometry = NavMeshCollectGeometry.PhysicsColliders;
+            surface.layerMask = ~0;
+            surface.BuildNavMesh();
+            SaveNavMesh(surface, NavMesh2FPath);
+        }
+
+        private static void SaveNavMesh(NavMeshSurface surface, string path)
+        {
+            NavMeshData data = surface.navMeshData;
+            if (data == null)
+            {
+                return;
+            }
+
+            if (AssetDatabase.LoadAssetAtPath<NavMeshData>(path) != null)
+            {
+                AssetDatabase.DeleteAsset(path);
+            }
+
+            AssetDatabase.CreateAsset(data, path);
+            surface.navMeshData = AssetDatabase.LoadAssetAtPath<NavMeshData>(path);
+            EditorUtility.SetDirty(surface);
         }
 
         // ================================================================ 手电

@@ -113,7 +113,7 @@ event Action<IInteractable> PlayerInteractor.TargetChanged; // 变化时触发�
 ## Threats ← 状态（`namespace Ib.Threats`，只读 GameFlow，不改状态）
 - 唯一规则表：`Assets/Scripts/Threats/ThreatSchedule.cs`。
   - 天使：`AfterHours`/`PowerOut` = Peek（不动），`AngelsActive` = Attack（巡逻+追击），其余 = Still。订阅 `StateChanged`。
-  - 人台（`MannequinPatrol`）、名画人物（`PaintingFigure`，目前只有出动开关）：`HasFlashlight && State ∈ {PowerOut, AngelsActive}` 时出动。订阅 `FlashlightObtained` + `StateChanged`，拿手电时状态是否切到 `AngelsActive` 都能用。
+  - 人台（`MannequinPatrol`）、名画人物（`PaintingFigure`）：`HasFlashlight && State ∈ {PowerOut, AngelsActive}` 时出动。订阅 `FlashlightObtained` + `StateChanged`。名画人物出动后会追击：看见就追到抓住；蹲在 `DisplayCase` 后视线被挡则不会发现；已经在追时视线断开，只走到玩家消失的位置。
 - 死亡重生：所有怪物订阅 `GameOverScreen.Continued`，回原位并按**当时的** `GameFlow.State`/`HasFlashlight` 重设。Gameplay 读档恢复状态时，在 `Continued` 之前或之后 `SetState` 都行（之后的话由 `StateChanged` 再修正一次）；`HasFlashlight` 若要按检查点回退，回退后需再触发一次 `StateChanged` 或在 Continued 之前改好。
 - 名画人物挂法（给 Ib Level）：人物物体挂 `PaintingFigure`，可选填 `stillVisual`（画里）/`outVisual`（出画后）。
 

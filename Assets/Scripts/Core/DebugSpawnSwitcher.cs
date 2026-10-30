@@ -1,4 +1,5 @@
 using Ib.Environment;
+using Ib.Flow;
 using Ib.Player;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -77,7 +78,54 @@ namespace Ib.Core
                 look.ResetLook(target.SpawnRotation.eulerAngles.y);
             }
 
-            Debug.Log("[DebugSpawnSwitcher] → " + target.name, target);
+            ApplyState(target.name);
+            Debug.Log("[DebugSpawnSwitcher] → " + target.name + "（" + GameFlow.State + "）", target);
+        }
+
+        /// <summary>
+        /// 按检查点把全局状态拨到对应阶段，并记成当前检查点（死了从这里重来）。
+        /// DBG 点只在还停在黑屋时拨到画中馆，其余保持当前状态。主菜单期间不动状态。
+        /// CP4 / CP5 顺带给工作卡 / 钥匙。往回传不会收走手电和道具、也不会重新来电（F10 手动开灯）。
+        /// </summary>
+        private static void ApplyState(string pointName)
+        {
+            if (GameFlow.State == GameState.MainMenu)
+            {
+                return;
+            }
+
+            switch (pointName)
+            {
+                case Checkpoints.BlackRoom:
+                    GameFlow.SetState(GameState.BlackRoom);
+                    break;
+                case Checkpoints.AfterHours:
+                    GameFlow.SetState(GameState.AfterHours);
+                    break;
+                case Checkpoints.Flashlight:
+                    GameFlow.PhoneAnswered = true;
+                    GameFlow.SetState(GameState.PowerOut);
+                    GameFlow.GiveFlashlight();
+                    break;
+                case Checkpoints.AngelsActive:
+                case Checkpoints.TaskB:
+                case Checkpoints.TaskC:
+                    GameFlow.PhoneAnswered = true;
+                    GameFlow.SetState(GameState.AngelsActive);
+                    GameFlow.GiveFlashlight();
+                    GameFlow.HasStaffCard |= pointName != Checkpoints.AngelsActive;
+                    GameFlow.HasKey |= pointName == Checkpoints.TaskC;
+                    break;
+                default:
+                    if (GameFlow.State == GameState.BlackRoom)
+                    {
+                        GameFlow.SetState(GameState.PaintedGallery);
+                    }
+
+                    break;
+            }
+
+            Checkpoints.Reach(pointName);
         }
 #endif
     }
