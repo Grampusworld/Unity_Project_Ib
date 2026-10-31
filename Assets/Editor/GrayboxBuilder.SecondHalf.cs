@@ -175,12 +175,13 @@ namespace Ib.EditorTools
             plate.center = new Vector3(0f, MainDoorHeight * 0.5f, inner + 0.12f);
             plate.size = new Vector3(MainDoorWidth, MainDoorHeight, 0.04f);
 
-            LocalBox(lockRoot, "LockPlate", new Vector3(0f, 1.09f, inner + 0.02f), new Vector3(0.16f, 0.26f, 0.04f), Finishes.Brass);
+            GameObject plateVisual = LocalBox(lockRoot, "LockPlate", new Vector3(0f, 1.09f, inner + 0.02f), new Vector3(0.16f, 0.26f, 0.04f), Finishes.Brass);
             GameObject key = LocalBox(lockRoot, "Key_InLock", new Vector3(0f, 1.05f, inner + 0.09f), new Vector3(0.03f, 0.03f, 0.1f), Finishes.Brass);
             key.SetActive(false);
 
             MainDoorLock lockComp = lockRoot.gameObject.AddComponent<MainDoorLock>();
             SetRef(lockComp, "keyVisual", key);
+            SetRef(lockComp, "lockVisual", plateVisual);
         }
 
         /// <summary>名画人物不进全家福厅（GDD §6.9）。门洞本身留在外面，它们停在门口。</summary>

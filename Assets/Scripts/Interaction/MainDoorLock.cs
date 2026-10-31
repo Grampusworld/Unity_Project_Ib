@@ -9,14 +9,18 @@ namespace Ib.Interaction
     /// 没钥匙 = 推不动（咔哒一声，拿到手电以后才给「找到打开主门的钥匙」）；
     /// 有钥匙 = 第一次按 E 插进锁孔；之后再按 E 弹确认窗，选 Open 进坏结局，选 Don't open 关窗、钥匙留在锁里。
     /// 碰撞体是贴在门内侧的一块薄板，序章时关掉，免得挡住推门（DoubleDoor 自己的交互）。
+    /// 锁片挂在门的根节点上、不跟门板转，所以只在门关着、并且已经进过馆（大门被 MuseumEntrance 关死以后）才显示；
+    /// 推门开着的那段时间不显示，不然会悬在门洞里。
     /// Ib Level 挂在 MainDoor_Double/MainDoor_Lock 上（布置后半段时生成）。
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class MainDoorLock : MonoBehaviour, IInteractable
     {
         [SerializeField] private GameObject keyVisual;
+        [SerializeField] private GameObject lockVisual;
 
         private Collider[] colliders;
+        private DoubleDoor door;
 
         public string Prompt => !GameFlow.HasKey ? "Push" : GameFlow.KeyInserted ? "Open" : "Insert key";
 
@@ -26,7 +30,16 @@ namespace Ib.Interaction
 
         private static bool InRealMuseum => GameFlow.State >= GameState.AfterHours && GameFlow.State != GameState.Ending;
 
-        private void Awake() => colliders = GetComponents<Collider>();
+        private void Awake()
+        {
+            colliders = GetComponents<Collider>();
+            door = GetComponentInParent<DoubleDoor>();
+            if (lockVisual == null)
+            {
+                Transform plate = transform.Find("LockPlate");
+                lockVisual = plate != null ? plate.gameObject : null;
+            }
+        }
 
         private void OnEnable()
         {
@@ -46,9 +59,24 @@ namespace Ib.Interaction
                 c.enabled = on;
             }
 
-            if (keyVisual != null)
+            ApplyVisuals();
+        }
+
+        // 门是 MuseumEntrance 瞬间关上的，没有事件，每帧对一下
+        private void LateUpdate() => ApplyVisuals();
+
+        private void ApplyVisuals()
+        {
+            bool shown = GameFlow.State >= GameState.PaintedGallery && (door == null || door.IsClosed);
+            if (lockVisual != null && lockVisual.activeSelf != shown)
             {
-                keyVisual.SetActive(GameFlow.KeyInserted);
+                lockVisual.SetActive(shown);
+            }
+
+            bool key = shown && GameFlow.KeyInserted;
+            if (keyVisual != null && keyVisual.activeSelf != key)
+            {
+                keyVisual.SetActive(key);
             }
         }
 
