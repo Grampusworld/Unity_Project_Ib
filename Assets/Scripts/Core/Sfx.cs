@@ -15,6 +15,8 @@ namespace Ib.Core
         public const string KeyClick = "KeyClick";
         public const string LockRattle = "LockRattle";
         public const string StoneScrape = "StoneScrape";
+        public const string AngelScream = "AngelScream";
+        public const string AngelScreamRec = "AngelScreamRec";
 
         private static readonly Dictionary<string, AudioClip> cache = new Dictionary<string, AudioClip>();
 
@@ -47,6 +49,22 @@ namespace Ib.Core
             GameObject go = new GameObject("Sfx_" + name);
             go.transform.position = position;
             AudioSource source = Attach(go, clip, false, volume, maxDistance);
+            source.Play();
+            Object.Destroy(go, clip.length + 0.1f);
+        }
+
+        /// <summary>2D 一次性播放（UI / jump scare），听得到就播完，与位置无关。</summary>
+        public static void PlayUI(string name, float volume)
+        {
+            AudioClip clip = Load(name);
+            if (clip == null)
+            {
+                return;
+            }
+
+            GameObject go = new GameObject("SfxUI_" + name);
+            AudioSource source = Attach(go, clip, false, volume, 30f);
+            source.spatialBlend = 0f;
             source.Play();
             Object.Destroy(go, clip.length + 0.1f);
         }
