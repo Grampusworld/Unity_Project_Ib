@@ -270,6 +270,8 @@ namespace Ib.EditorTools
             WeepingAngelSetup.Setup();
             // 后半段的电话、正门锁、工作卡、抽屉、手电落地（GrayboxBuilder.SecondHalf.cs，会再存一次场景）
             SetupSecondHalf();
+            // 游客模型、导言墙、厕所镜子 + Ted、值班室监控（GrayboxBuilder.Exhibition.cs，会再存一次场景）
+            SetupExhibition();
 
             Debug.Log("[GrayboxBuilder] 完成：" + ScenePath);
         }

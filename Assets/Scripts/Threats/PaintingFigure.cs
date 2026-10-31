@@ -161,8 +161,13 @@ namespace Ib.Threats
 
         private void Update()
         {
-            if (!IsActive || GameOverScreen.IsShowing)
+            if (!IsActive || GameOverScreen.IsShowing || ThreatSchedule.Paused)
             {
+                if (ThreatSchedule.Paused && agent != null && agent.enabled && agent.isOnNavMesh)
+                {
+                    agent.isStopped = true;
+                }
+
                 return;
             }
 

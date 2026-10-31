@@ -14,6 +14,7 @@ namespace Ib.Core
         public const string PowerClunk = "PowerClunk";
         public const string KeyClick = "KeyClick";
         public const string LockRattle = "LockRattle";
+        public const string StoneScrape = "StoneScrape";
 
         private static readonly Dictionary<string, AudioClip> cache = new Dictionary<string, AudioClip>();
 

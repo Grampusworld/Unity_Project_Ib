@@ -92,7 +92,7 @@ namespace Ib.Threats
         private void Update()
         {
             CurrentSpeed = 0f;
-            if (!IsActive || path == null || path.Count < 2)
+            if (!IsActive || path == null || path.Count < 2 || ThreatSchedule.Paused)
             {
                 return;
             }

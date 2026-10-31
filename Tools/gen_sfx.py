@@ -131,4 +131,18 @@ for k, at in enumerate([0.0, 0.11, 0.2, 0.34]):
 thump = [math.sin(2 * math.pi * 90 * i / SR) * math.exp(-i / SR * 20) for i in range(int(0.3 * SR))]
 place(buf, thump, 0.34)
 write("LockRattle", buf)
+
+# stone scrape: heavy statue shifting on a stone floor, low grinding noise swelling and dying out
+n = int(1.6 * SR)
+grind = lowpass([random.uniform(-1, 1) for _ in range(n)], 420)
+grit = highpass([random.uniform(-1, 1) for _ in range(n)], 1800)
+buf = []
+for i in range(n):
+    t = i / SR
+    env = math.sin(math.pi * min(1.0, t / 1.4)) ** 1.5 if t < 1.4 else 0.0
+    wobble = 0.7 + 0.3 * math.sin(2 * math.pi * 7 * t + math.sin(2 * math.pi * 1.3 * t))
+    buf.append((grind[i] * 2.2 + grit[i] * 0.25 * wobble) * env)
+thud = [math.sin(2 * math.pi * 48 * i / SR) * math.exp(-i / SR * 12) * 0.8 for i in range(int(0.5 * SR))]
+place(buf, thud, 1.25)
+write("StoneScrape", buf)
 print("ok")
