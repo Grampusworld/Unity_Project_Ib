@@ -102,6 +102,8 @@ namespace Ib.Flow
             }
 
             IsPaused = paused;
+            // 暂停时全部声音一起停（电话铃、底噪、吊灯吱呀），继续时从原处接着放
+            AudioListener.pause = paused;
             if (paused)
             {
                 pausedTimeScale = Time.timeScale;
@@ -188,6 +190,7 @@ namespace Ib.Flow
             // 关掉"进入 Play 时重载域"也要干净：每次加载都复位
             State = GameState.MainMenu;
             IsPaused = false;
+            AudioListener.pause = false;
             Time.timeScale = 1f;
             menuRegistered = false;
             shownHints.Clear();

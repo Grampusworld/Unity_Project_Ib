@@ -33,6 +33,7 @@ namespace Ib.Player
 
         [Header("引用")]
         [SerializeField] private Transform cameraRoot;
+        [SerializeField] private PlayerStamina stamina;
 
         [Header("头部晃动")]
         [SerializeField] private bool headBobEnabled = true;
@@ -95,6 +96,14 @@ namespace Ib.Player
         private float distanceSinceStep;
         private float currentHeight;
         private Vector3 lastSafePosition;
+        private float stepSmoothing;
+        private float lastGroundedTime = -1f;
+
+        /// <summary>镜头追上台阶高度的速度（1/秒），越大越跟手。</summary>
+        [SerializeField, Min(1f)] private float stepSmoothingSpeed = 12f;
+        private const float MaxStepSmoothing = 0.35f;
+        /// <summary>离地这么短的时间内仍算着地（头摆不因台阶上一帧的离地而开关）。</summary>
+        private const float GroundedGrace = 0.15f;
 
         private void Awake()
         {
@@ -103,6 +112,16 @@ namespace Ib.Player
             if (cameraRoot == null)
             {
                 cameraRoot = transform.Find("CameraRoot");
+            }
+
+            if (stamina == null)
+            {
+                // 没有手动挂的话自己补一个，不用在预制体里另外摆组件
+                stamina = GetComponent<PlayerStamina>();
+                if (stamina == null)
+                {
+                    stamina = gameObject.AddComponent<PlayerStamina>();
+                }
             }
 
             Camera cam = GetComponentInChildren<Camera>();
@@ -181,10 +200,31 @@ namespace Ib.Player
             ApplyVertical(dt);
 
             velocity = new Vector3(horizontalVelocity.x, velocity.y, horizontalVelocity.z);
+            bool wasGrounded = IsGrounded;
+            float feetBefore = transform.position.y;
             controller.Move(velocity * dt);
 
             // isGrounded 在 Move 之后才可靠
             IsGrounded = controller.isGrounded;
+
+            // 下楼走出台阶边缘：贴回下一级，不然每级都会离地一下（头摆停、重力起步，镜头一顿一顿）
+            if (wasGrounded && !IsGrounded && velocity.y <= 0f)
+            {
+                SnapDownStep();
+            }
+
+            if (IsGrounded)
+            {
+                lastGroundedTime = Time.time;
+            }
+
+            // 台阶让脚底一帧跳 0.195 m：先把这一跳记到镜头上反向抵消，再慢慢放掉
+            if (wasGrounded && IsGrounded)
+            {
+                stepSmoothing = Mathf.Clamp(stepSmoothing - (transform.position.y - feetBefore), -MaxStepSmoothing, MaxStepSmoothing);
+            }
+
+            stepSmoothing *= Mathf.Exp(-stepSmoothingSpeed * dt);
 
             UpdateFootsteps(dt);
             UpdateCameraPosition(dt);
@@ -211,8 +251,10 @@ namespace Ib.Player
 
         private float ResolveSpeed()
         {
-            bool sprinting = !InputBlocked && sprintAction.IsPressed() && !IsCrouching && moveAction.ReadValue<Vector2>().y > 0.1f;
+            bool wantsSprint = !InputBlocked && sprintAction.IsPressed() && !IsCrouching && moveAction.ReadValue<Vector2>().y > 0.1f;
+            bool sprinting = wantsSprint && (stamina == null || stamina.CanSprint);
             IsSprinting = sprinting;
+            stamina?.SetSprinting(sprinting);
 
             if (IsCrouching)
             {
@@ -320,7 +362,7 @@ namespace Ib.Player
             float lateral = 0f;
             float vertical = 0f;
 
-            if (headBobEnabled && IsGrounded && IsMoving)
+            if (headBobEnabled && Time.time - lastGroundedTime < GroundedGrace && IsMoving)
             {
                 float speedFactor = Mathf.Clamp01(HorizontalSpeed / walkSpeed);
                 bobPhase += dt * bobFrequency * speedFactor;
@@ -333,8 +375,24 @@ namespace Ib.Player
                 bobPhase = Mathf.Lerp(bobPhase, 0f, 1f - Mathf.Exp(-8f * dt));
             }
 
-            Vector3 local = new Vector3(lateral, currentHeight + eyeOffset + vertical, 0f);
+            Vector3 local = new Vector3(lateral, currentHeight + eyeOffset + vertical + stepSmoothing, 0f);
             cameraRoot.localPosition = local;
+        }
+
+        /// <summary>往下探一个 stepOffset 找地面；找不到（真的走下了平台边）就原样放回。</summary>
+        private void SnapDownStep()
+        {
+            Vector3 before = transform.position;
+            controller.Move(Vector3.down * controller.stepOffset);
+            if (controller.isGrounded)
+            {
+                IsGrounded = true;
+                return;
+            }
+
+            controller.enabled = false;
+            transform.position = before;
+            controller.enabled = true;
         }
 
         /// <summary>传送时调用：处理 CharacterController 与速度残留。</summary>
@@ -353,6 +411,7 @@ namespace Ib.Player
             bobPhase = 0f;
             distanceSinceStep = 0f;
             lastSafePosition = position;
+            stepSmoothing = 0f;
         }
 
         // ---------------------------------------------------------------- 自由飞行（调试）
@@ -399,6 +458,7 @@ namespace Ib.Player
             horizontalVelocity = Vector3.zero;
             IsGrounded = false;
             distanceSinceStep = 0f;
+            stepSmoothing = 0f;
         }
 
         /// <summary>相机朝向 + 世界上下，无加速度、无碰撞、无重力。</summary>

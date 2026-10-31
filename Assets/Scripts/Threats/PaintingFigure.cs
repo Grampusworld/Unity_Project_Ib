@@ -63,6 +63,9 @@ namespace Ib.Threats
         private FirstPersonController player;
         private float eyeHeight;
         private bool warnedOffMesh;
+        private Animator animator;
+        private Transform girlVisual;
+        private readonly RaycastHit[] groundHits = new RaycastHit[8];
 
         private void Awake()
         {
@@ -75,9 +78,15 @@ namespace Ib.Threats
                 gameObject.AddComponent<CapsuleCollider>();
             }
 
+            // 身高：占位胶囊看自身网格；换成 Girl 模型后根上没有网格，看胶囊碰撞体（根在身体中心）
             Renderer rend = GetComponent<Renderer>();
-            eyeHeight = rend != null ? rend.bounds.extents.y * 0.72f : 0.9f;
-            floorY = rend != null ? rend.bounds.min.y : transform.position.y - 1.1f;
+            CapsuleCollider body = GetComponent<CapsuleCollider>();
+            float halfHeight = rend != null ? rend.bounds.extents.y
+                : body != null ? body.height * 0.5f * transform.lossyScale.y : 1.1f;
+            eyeHeight = halfHeight * 0.72f;
+            floorY = transform.position.y - halfHeight;
+            animator = GetComponentInChildren<Animator>(true);
+            girlVisual = transform.Find("Visual_Girl");
 
             agent = GetComponent<NavMeshAgent>();
             if (agent == null)
@@ -87,7 +96,9 @@ namespace Ib.Threats
 
             agent.radius = 0.32f;
             agent.height = 1.6f;
-            agent.baseOffset = rend != null ? rend.bounds.extents.y : 1.1f;
+            // NavMeshAgent 的 baseOffset 会再乘一次根节点缩放（灰盒整体放大了 WorldScale），所以这里要除回去，
+            // 否则枢轴被抬高 halfHeight × (缩放 − 1)，人物悬空。
+            agent.baseOffset = halfHeight / Mathf.Max(0.01f, transform.lossyScale.y);
             agent.speed = chaseSpeed;
             agent.acceleration = 16f;
             agent.angularSpeed = 420f;
@@ -157,6 +168,55 @@ namespace Ib.Threats
                     agent.enabled = false;
                 }
             }
+        }
+
+        /// <summary>Girl 模型的动作跟着移动速度播：站着不动就定格（名画人物不该有待机小动作）。</summary>
+        private void LateUpdate()
+        {
+            SnapVisualToGround();
+            if (animator == null)
+            {
+                return;
+            }
+
+            float v = agent != null && agent.enabled ? agent.velocity.magnitude : 0f;
+            animator.speed = IsActive && !ThreatSchedule.Paused ? Mathf.Clamp(v / roamSpeed, 0f, 1.8f) : 0f;
+        }
+
+        /// <summary>
+        /// Girl 外形贴地：从身体中心往下打射线找楼面，把 Visual_Girl（原点 = 爬行姿势最低点）放到楼面上。
+        /// 不依赖 agent 的 baseOffset 换算，楼梯、坡面上也贴得住。
+        /// </summary>
+        private void SnapVisualToGround()
+        {
+            if (girlVisual == null)
+            {
+                return;
+            }
+
+            Vector3 origin = transform.position + Vector3.up * 0.3f;
+            int n = Physics.RaycastNonAlloc(origin, Vector3.down, groundHits, 4f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            float best = float.MaxValue;
+            float groundY = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                Transform t = groundHits[i].transform;
+                if (t == transform || t.IsChildOf(transform) || groundHits[i].distance >= best)
+                {
+                    continue;
+                }
+
+                best = groundHits[i].distance;
+                groundY = groundHits[i].point.y;
+            }
+
+            if (best == float.MaxValue)
+            {
+                return;
+            }
+
+            Vector3 p = girlVisual.position;
+            girlVisual.position = new Vector3(p.x, groundY, p.z);
         }
 
         private void Update()
@@ -304,7 +364,7 @@ namespace Ib.Threats
         }
 
         /// <summary>
-        /// 网格的枢轴在胶囊中心。Warp 要给的是枢轴位置，所以在导航点上再抬一个 baseOffset，脚才贴着楼面。
+        /// 网格的枢轴在胶囊中心。Warp 给导航网格上的点，agent 自己按 baseOffset 抬到枢轴高度。
         /// </summary>
         private void PlaceOnMesh(Vector3 around)
         {
@@ -320,7 +380,7 @@ namespace Ib.Threats
 
             if (NavMesh.SamplePosition(probe, out NavMeshHit hit, 1.5f, NavMesh.AllAreas))
             {
-                agent.Warp(hit.position + Vector3.up * agent.baseOffset);
+                agent.Warp(hit.position);   // Warp 收的是导航网格上的点，baseOffset 由 agent 自己加
             }
             else if (!warnedOffMesh)
             {

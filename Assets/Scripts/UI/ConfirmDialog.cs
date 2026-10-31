@@ -47,6 +47,8 @@ namespace Ib.UI
             dialog.yesLabel = yes.GetComponentInChildren<Text>();
             dialog.noLabel = no.GetComponentInChildren<Text>();
             dialog.yesLabel.color = dialog.noLabel.color = Ink;
+            PaperButtonHover.Apply(yes, Ink);
+            PaperButtonHover.Apply(no, Ink);
 
             dialog.view.SetActive(false);
             return dialog;

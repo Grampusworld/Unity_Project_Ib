@@ -7,6 +7,8 @@ namespace Ib.UI
     /// <summary>运行时拼 uGUI 的小工具。UI 全在代码里生成，不进 .unity / .prefab。</summary>
     internal static class UIFactory
     {
+        public static readonly Color HoverWarm = new Color(1f, 0.88f, 0.62f);
+
         private static Font font;
         private static readonly DefaultControls.Resources Res = new DefaultControls.Resources();
 
@@ -55,7 +57,7 @@ namespace Ib.UI
             return t;
         }
 
-        /// <summary>只有文字的按钮：悬停时文字变暖色。</summary>
+        /// <summary>只有文字的按钮：悬停时文字变暖色、略放大，下方划出一道暖色细线（PaperButtonHover）。</summary>
         public static Button Button(Transform parent, string label, UnityAction onClick, int size = 32)
         {
             GameObject go = DefaultControls.CreateButton(Res);
@@ -74,12 +76,14 @@ namespace Ib.UI
             button.targetGraphic = text;
             ColorBlock c = button.colors;
             c.normalColor = new Color(0.85f, 0.85f, 0.85f);
-            c.highlightedColor = new Color(1f, 0.88f, 0.62f);
+            c.highlightedColor = HoverWarm;
             c.selectedColor = c.normalColor;
             c.pressedColor = new Color(0.6f, 0.55f, 0.45f);
             c.fadeDuration = 0.08f;
             button.colors = c;
+            button.navigation = new Navigation { mode = Navigation.Mode.None }; // 点过后不留"选中"态，悬停才亮
             button.onClick.AddListener(onClick);
+            PaperButtonHover.Attach(button, new Color(HoverWarm.r, HoverWarm.g, HoverWarm.b, 0.9f));
             return button;
         }
 
@@ -92,6 +96,16 @@ namespace Ib.UI
             s.minValue = min;
             s.maxValue = max;
             s.value = value;
+            ColorBlock c = s.colors;
+            c.normalColor = new Color(0.85f, 0.85f, 0.85f);
+            c.highlightedColor = HoverWarm;
+            c.pressedColor = new Color(0.86f, 0.74f, 0.45f);
+            c.selectedColor = c.normalColor;
+            c.fadeDuration = 0.08f;
+            s.colors = c;
+            s.navigation = new Navigation { mode = Navigation.Mode.None };
+            Transform fillRect = s.fillRect;
+            if (fillRect != null) fillRect.GetComponent<Image>().color = new Color(0.86f, 0.74f, 0.45f, 0.9f);
             s.onValueChanged.AddListener(onChange);
             return s;
         }

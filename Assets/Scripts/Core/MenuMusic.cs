@@ -90,7 +90,8 @@ namespace Ib.Core
                 source.Play();
             }
 
-            source.volume = Mathf.MoveTowards(source.volume, Volume, Volume / FadeInSeconds * Time.unscaledDeltaTime);
+            float target = Volume * AudioMix.Music;
+            source.volume = Mathf.MoveTowards(source.volume, target, Volume / FadeInSeconds * Time.unscaledDeltaTime);
         }
     }
 }

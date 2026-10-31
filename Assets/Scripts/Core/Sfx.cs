@@ -17,6 +17,9 @@ namespace Ib.Core
         public const string StoneScrape = "StoneScrape";
         public const string AngelScream = "AngelScream";
         public const string AngelScreamRec = "AngelScreamRec";
+        public const string PaperFlip = "PaperFlip";
+        public const string DoorSlam = "DoorSlam";
+        public const string DoorCreak = "DoorCreak";
 
         private static readonly Dictionary<string, AudioClip> cache = new Dictionary<string, AudioClip>();
 
@@ -75,7 +78,7 @@ namespace Ib.Core
             AudioSource source = host.AddComponent<AudioSource>();
             source.clip = clip;
             source.loop = loop;
-            source.volume = volume;
+            source.volume = volume * AudioMix.Effects;
             source.playOnAwake = false;
             source.spatialBlend = 1f;
             source.rolloffMode = AudioRolloffMode.Linear;

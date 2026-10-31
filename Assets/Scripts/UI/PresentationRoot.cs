@@ -54,6 +54,7 @@ namespace Ib.UI
             Reader = TextReader.Create(transform);
             Confirm = ConfirmDialog.Create(transform);
             Crosshair.Create(transform);
+            StaminaBar.Create(transform);
             Fader = ScreenFader.Create(transform); // 盖在所有 UI 之上
             Ending = EndingCard.Create(transform); // 结局字幕在黑幕之上
         }

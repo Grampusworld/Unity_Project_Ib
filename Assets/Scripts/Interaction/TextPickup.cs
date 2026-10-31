@@ -1,3 +1,4 @@
+using Ib.Core;
 using Ib.Flow;
 using Ib.UI;
 using UnityEngine;
@@ -30,6 +31,7 @@ namespace Ib.Interaction
 
         public void Interact(PlayerInteractor interactor)
         {
+            Sfx.PlayUI(Sfx.PaperFlip, 0.25f);
             GameFlow.SetInputLocked(true);
             Presentation.OpenText(textId, OnClosed);
 

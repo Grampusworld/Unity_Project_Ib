@@ -13,6 +13,9 @@ namespace Ib.Interaction
     [DisallowMultipleComponent]
     public sealed class PlayerInteractor : MonoBehaviour
     {
+        /// <summary>玩家按 E 交互了某个物体（InteractMarkers 据此去掉它的感叹号）。</summary>
+        public static event Action<IInteractable> Interacted;
+
         [SerializeField] private Transform cameraTransform;
         [SerializeField, Min(0.1f)] private float reach = 2.2f;
         [SerializeField, Min(0.01f)] private float probeRadius = 0.08f;
@@ -70,7 +73,9 @@ namespace Ib.Interaction
 
             if (aiming && Current != null && interactAction.WasPressedThisFrame())
             {
-                Current.Interact(this);
+                IInteractable target = Current;
+                target.Interact(this);
+                Interacted?.Invoke(target);
             }
         }
 

@@ -289,3 +289,25 @@
 - `Threats_Placeholder/PaintingFigure_A`、`PaintingFigure_B`：挂 `PaintingFigure`；占位胶囊没有子物体，stillVisual/outVisual 未填。
 - 触发盒是空物体 + isTrigger BoxCollider（无渲染），加 NavMeshModifier ignoreFromBuild，不进天使的一层 NavMesh。
 - 备份：`Docs/Backup/2026-10-30_before_regen4/`（GrayboxBuilder.cs.txt、Graybox.unity.txt）。待 Unity 里重新生成后验证。
+
+## 2026-10-31 修正（第 6 轮）
+- 前台 T14/T15 文件夹挪到柜身员工那面、抽屉左右（本地 x ±0.62, z 0.407）；`布置后半段` 菜单会把旧场景里的两份挪过去（`MoveDeskNote`）。原来贴在抽屉面板前，抽屉拉出穿模，抽屉碰撞体还挡住准星。
+- 楼梯镜头：`FirstPersonController` 把每级台阶的高度跳变记到镜头上再指数放掉（`stepSmoothingSpeed`），下楼走出台阶边会贴回下一级（`SnapDownStep`），头摆按 0.15 s 着地宽限判断。
+- 全家福：`FamilyPortraitExit` 先把镜头 2.6 s 推向画架上的 Canvas，推到一半开始 1.8 s 渐黑；真结局推镜头开始时就切 Ending，馆藏停下。参数都在组件 Inspector 上。
+- 开门确认窗按钮：`PaperButtonHover`（淡墨底色 + 文字放大 1.06 + 下划线）。
+- 备份：`Docs/Backup/2026-10-31_before_fix6/`。
+
+## 2026-10-31 jump scare / BGM / 天使楼下等待
+- 抓住玩家先放 jump scare 再 Game Over：`AngelJumpScare`（运行时自生成，约 1.35 s，unscaled 时间）——锁输入停威胁、天使瞬移到相机前 0.7 m、镜头怼头 + FOV 推 34° + 抖动、白闪转暗红闪烁、2D 满音量 `Sfx.AngelScream`，切黑后回调 `GameOverScreen.Show()` + 天使回巡逻起点。数值在 `AngelJumpScare` Inspector 上；尖叫音效由 `Tools/gen_sfx.py` 末尾的 `angel_scream()` 合成（重新生成：`python3 Tools/gen_sfx.py Assets/Resources/Audio`，放在最后所以已有 wav 不变）。
+- 全局 BGM：`MuseumBgm`（自生成 2D 循环，`Resources/Audio/BGM_Museum.mp3`，公有领域见同目录 LICENSE）。BlackRoom 按「出生点离大门距离 → 0」SmoothStep 从 0 升到 0.5；PaintedGallery 起保持最大；第一次进 BlackRoomReturn 淡出 2.5 s 并停，本局不再播。常量在 `MuseumBgm` 顶部。
+- 天使楼下等待：进 Attack 时玩家在一楼地面 + 4 m 以上就不下展台，Warp 到 `DBG7_Stairs_1F` 东侧 2 m、朝西罚站（被不被看都不动），玩家下到 +1.5 m 以内才从最近巡逻点照常开始；Warp 失败打 warning 退回展台下地。参数在 `WeepingAngel` 的「楼下等待」组。`SecurityMonitors` 的 `MoveAngelsOutOfFeed`/`Occluded` 已删。
+
+## 2026-10-31 便签声音 / 前台便签 / Get The Flash / 体力 / 值班室门
+- **便签声音**：`Interaction/TextPickup.cs` 打开纸面的 `Sfx.PlayUI(Sfx.PaperFlip, ...)` 从 0.6 降到 0.25；全项目只有这一处播 `PaperFlip`（`PaperFlip_0..2` 目前没有代码用）。
+- **前台便签**：`GrayboxBuilder.SecondHalf.cs` 的 `NotePosT14/T15` 从 x = ∓0.62 改成 ∓0.75（y 0.73、z 0.407 不变）。抽屉宽 ±0.35、两侧柜门从 ±0.95 开始、便签宽 0.26，0.75 正好在中间。旧场景跑一次 `Tools/Ib/布置后半段（电话、正门锁、工作卡、抽屉）` 才会挪过去。
+- **Get The Flash**：`HintId.GetFlash = 7`，`Resources/Texts/Hints.asset` 末尾第 7 行 `Get The Flash`（`HintTable.Get` 是 `lines[(int)id - 1]`）；`SceneTransitions.CutPower` 在 `SetState(PowerOut)` 后调 `ShowHintOnce`。
+- **体力**：`Player/PlayerStamina.cs` 的 `maxStamina` 5 → 3.75（原来的 3/4），`recoverSeconds` 仍是 3 s。Prefab / Scene / Editor 里都没有覆盖这个字段。
+- **值班室门**（`Interaction/MagLockDoor.cs`）：不再沿 `slide` 平移。合页边、门宽运行时从门板自己的 Renderer 包围盒算：门在 x = 13 的墙里、宽 1.2（世界 1.68），合页取靠墙的南侧竖边 + 门板朝室内的一面，绕竖轴向值班室（−X）转 90°，开到头贴在门洞南侧门套上，扫不到值班室的墙；关着时的位置和朝向不变。
+  - 时序：停电（进入 PowerOut）→ `PowerClunk` + 2.5 s 向里开；拿到手电后玩家进屋（离门墙 > 1.5 m、同一层，位置判断，无新触发器）→ 0.15 s 猛关 + `DoorSlam`；监控过场 `SecurityMonitors.Playing` 由 true 变 false → 3 s 缓开 + `DoorCreak`。关着时门板碰撞体跟着回到原位，出不去。
+  - 读档 / 重生：状态 < PowerOut 瞬间关；≥ PowerOut 瞬间开着；PowerOut 且已经关过时重生会重新打开并允许再关一次。
+  - 生成器（`GrayboxBuilder.cs` 约 574 行）只留 `AddComponent<MagLockDoor>()`，删掉了 `SetVector3(..., "slide", ...)`。音效 `DoorSlam` / `DoorCreak` 在 `Tools/gen_sfx.py` 末尾合成，生成命令不变：`python3 Tools/gen_sfx.py Assets/Resources/Audio`。

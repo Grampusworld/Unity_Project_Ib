@@ -32,7 +32,7 @@ namespace Ib.Interaction
         private void Awake()
         {
             bell = Sfx.Attach(gameObject, Sfx.Load(Sfx.PhoneRing), true, 1f, ringDistance);
-            line = Sfx.Attach(gameObject, Sfx.Load(Sfx.LineHiss), false, 0.8f, 8f);
+            line = Sfx.Attach(gameObject, Sfx.Load(Sfx.LineHiss), false, 0.45f, 8f);
             // 铃声要穿过楼板传到二楼：只做一半 3D，远处也听得见方向
             bell.spatialBlend = 0.6f;
         }
@@ -56,6 +56,12 @@ namespace Ib.Interaction
 
         private void Update()
         {
+            // 暂停时声音由 GameFlow 整体静音（AudioListener.pause），这里也别把"底噪放完"误判成通话结束
+            if (GameFlow.IsPaused)
+            {
+                return;
+            }
+
             // 底噪放完（最后一下是挂断声）才把控制还给玩家
             if (onCall && !line.isPlaying)
             {

@@ -156,6 +156,9 @@ namespace Ib.Interaction
                 }
             }
 
+            // 模型（手电头在本地 +X）跟着转过去，看起来光确实是从手电头里打出来的
+            transform.rotation = Quaternion.LookRotation(bestDir, Vector3.up) * Quaternion.Euler(0f, -90f, 0f);
+
             // 略微上抬：光打到长廊对面的墙和天花上，远处（楼梯口）也看得见，而不只是贴地一片
             beam.transform.rotation = Quaternion.LookRotation(bestDir, Vector3.up) * Quaternion.Euler(-BeamTilt, 0f, 0f);
         }

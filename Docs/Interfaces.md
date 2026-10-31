@@ -6,7 +6,7 @@
 
 ### 任务提示
 ```csharp
-public enum HintId { Explore = 1, AnswerPhone = 2, GetOut = 3, FindKey = 4, GetStaffCard = 5, OpenDrawer = 6 }
+public enum HintId { Explore = 1, AnswerPhone = 2, GetOut = 3, FindKey = 4, GetStaffCard = 5, OpenDrawer = 6, GetFlash = 7 }
 Presentation.ShowHint(HintId id);   // 屏幕上方淡入一行，3 秒后淡出（GDD §3.7）
 ```
 - 文案存在 `Assets/Resources/Texts/Hints.asset`，英文按 GDD §7.2。
@@ -77,11 +77,11 @@ void GameFlow.GiveFlashlight();                                     // 拾取物
 | 开局 | `StartNewGame` | BlackRoom | `CP0_BlackRoom_Start` |
 | 6 | `FamilyPortraitExit` 挂 `FamilyPortrait_Easel`（要 Collider），PaintedGallery 时按 E（"Look"） | 黑屏 → 传回黑屋 → BlackRoomReturn；空画框显示、正门锁死 | `CP0_BlackRoom_Start` |
 | 7 | `StateTrigger`（step = EmptyFrame）放在 `EmptyFrame_SecondVisit` 下，isTrigger 盒子盖住框内 | 黑屏 → 传到二楼家庭厅 → AfterHours；黑屋停用 | `CP1_ExitPainting_FamilyRoom` |
-| 10 | `StateTrigger`（step = PowerOut）放楼梯中段，isTrigger | PowerOut：全馆灯关、不再亮；`OnPowerOut`；`MagLockDoor` 滑开 | `CP_PowerOut_Stairs`（**新的，Level 加**；没有时只记状态，位置沿用 CP1） |
+| 10 | `StateTrigger`（step = PowerOut）放楼梯中段，isTrigger | PowerOut：全馆灯关、不再亮；`OnPowerOut`；`MagLockDoor` 向值班室内开；提示 Get The Flash | `CP_PowerOut_Stairs`（**新的，Level 加**；没有时只记状态，位置沿用 CP1） |
 | 12 | `FlashlightPickup` | 见上 | `CP2_Flashlight_Toilet` |
 | 14 | `MonitorTerminal` 挂 `A_MonitorWall`（要 Collider），PowerOut 且有手电时按 E（"Check"） | AngelsActive（过场以后做） | `CP3_TaskA_DutyRoom` |
 
-- 电磁锁门：`MagLockDoor` 挂 `Door_Duty_MagLock`，`State ≥ PowerOut` 时沿 `slide`（世界位移，默认 (0,0,-1)）2.5 s 滑开，更早状态瞬间关上。方向不对请 Level 在生成器里设 `slide`。
+- 电磁锁门：`MagLockDoor` 挂 `Door_Duty_MagLock`，合页边和门宽从门板自己的 Renderer 包围盒算（不传参）。停电时 2.5 s 向值班室（−X）内开 90°；拿到手电后玩家走进值班室（离门墙 > 1.5 m、同一层）猛地关上（0.15 s + `DoorSlam`），关着时挡住玩家；监控过场（`SecurityMonitors.Playing` true → false）结束后 3 s 缓缓打开（`DoorCreak`）。状态 < PowerOut 瞬间关；状态 ≥ PowerOut（读档 / 重生）瞬间开着，PowerOut 且已关过时重生会重开并允许再关一次。
 - `WorldState` 按物体名找：`NPC_Crowd`（State ≤ PaintedGallery 时显示）、`EmptyFrame_SecondVisit`（只在 BlackRoomReturn 显示）、`Level_BlackRoom`。**Level 改这几个名字要同步 `WorldState.cs`。**
 - 死亡：`GameOverScreen` 先 `PlayerSpawner.Respawn()`（落到 `PlayerSpawner.CurrentCheckpoint`），再发 `Continued`；`Checkpoints.Restore` 订阅它，把状态和灯恢复成记检查点时的样子。手电不回收。
 - 黑屏用 Presentation 的 `FadeToBlack/FadeFromBlack`（各 0.6 s），期间锁输入；`SceneTransitions.Busy` 为 true。
@@ -108,6 +108,7 @@ event Action<IInteractable> PlayerInteractor.TargetChanged; // 变化时触发�
 | FindKey | 第一次与正门锁交互完毕 |
 | GetStaffCard | T7 阅读器关闭时（`OpenText("T7", onClosed)` 的回调） |
 | OpenDrawer | 拿到工作卡 |
+| GetFlash | 楼梯中段断电（`SceneTransitions.CutPower`） |
 - 拿到钥匙后不再调用任何提示。
 
 ## Threats ← 状态（`namespace Ib.Threats`，只读 GameFlow，不改状态）
@@ -130,3 +131,4 @@ event Action<IInteractable> PlayerInteractor.TargetChanged; // 变化时触发�
 - 2026-10-30 Ib Presentation：新增屏幕下方中间交互提示 `InteractPrompt`（文案 `Resources/Texts/Interact.asset`，样式复用 `ControlHints.Row`），订阅 `PlayerInteractor.TargetChanged`，非 IsAiming 时隐藏。Unity 外编译 0 错误，未在 Play 里验证。
 - 2026-10-30 Ib Presentation：新增全屏黑幕 `Presentation.FadeToBlack(float seconds, Action onDone = null)` / `FadeFromBlack(...)`（`UI/ScreenFader.cs`，盖在所有 UI 之上，不受 timeScale 影响，新调用打断旧的、旧回调不调）。注意：UI 随场景加载重建，黑幕也会复位成透明；若切换时重载场景，加载后请再调一次 `FadeToBlack(0)` 再 `FadeFromBlack`。Unity 外编译 0 错误，未在 Play 里验证。
 - 2026-10-30 Ib Gameplay：场景切换与检查点（见同名一节）。`FlashlightPickup` 改成只在 PowerOut 可拿、不再切 AngelsActive。`InteractKind` 加 `Painting`、`Device`。Unity 外编译 0 错误，未在 Play 里验证（等 Level 挂组件）。
+- 2026-10-31 Ib Gameplay：`HintId.GetFlash = 7`（断电提示，`Hints.asset` 第 7 行）；`MagLockDoor` 从平移改成合页开门（停电开门 → 进屋猛关 → 过场后缓开），读档 / 重生按状态瞬间摆好。

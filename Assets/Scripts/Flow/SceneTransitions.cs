@@ -17,11 +17,15 @@ namespace Ib.Flow
 
         public static bool Busy { get; private set; }
 
-        /// <summary>第 6 步：画中馆看全家福 → 黑屏 → 回到黑屋，门的位置换成空画框。</summary>
-        public static void ReturnToBlackRoom()
+        /// <summary>
+        /// 第 6 步：画中馆看全家福 → 黑屏 → 回到黑屋，门的位置换成空画框。
+        /// fadeOutSeconds：渐黑用时（全家福推镜头用慢的）；atBlack：全黑后、传送前先调用（推镜头在这里把相机放回原位）。
+        /// </summary>
+        public static void ReturnToBlackRoom(float fadeOutSeconds = FadeSeconds, System.Action atBlack = null)
         {
-            Fade(() =>
+            Fade(fadeOutSeconds, () =>
             {
+                atBlack?.Invoke();
                 GameFlow.SetState(GameState.BlackRoomReturn);
                 Checkpoints.ReachAndTeleport(Checkpoints.BlackRoom); // 传回黑屋会把黑屋重新启用、门解锁
 
@@ -54,6 +58,7 @@ namespace Ib.Flow
         {
             GameFlow.SetState(GameState.PowerOut);
             Checkpoints.Reach(Checkpoints.PowerOut);
+            GameFlow.ShowHintOnce(HintId.GetFlash);
         }
 
         /// <summary>第 12 步：拿起手电，状态仍是 PowerOut。人台和名画人物由 Threats 按 HasFlashlight 出动，天使不动。</summary>
@@ -132,7 +137,7 @@ namespace Ib.Flow
         /// <summary>第 18 步 · 坏结局：确认开门。</summary>
         public static void BadEnding()
         {
-            Ending("Temporary Storage 07", new[]
+            Ending(FadeSeconds * 3f, "Temporary Storage 07", new[]
             {
                 "Behind the door there is no street. Only crates, stacked to the ceiling.",
                 "The number on the door matches the number on the key.",
@@ -143,9 +148,9 @@ namespace Ib.Flow
         }
 
         /// <summary>第 18 步 · 真结局：钥匙留在锁孔里，回到全家福前，走进那块空白。</summary>
-        public static void TrueEnding()
+        public static void TrueEnding(float fadeOutSeconds = FadeSeconds * 3f)
         {
-            Ending("Family Portrait", new[]
+            Ending(fadeOutSeconds, "Family Portrait", new[]
             {
                 "The key is still in the lock. The door could open at any time.",
                 "He steps into the blank. This time, it lets him in.",
@@ -156,7 +161,7 @@ namespace Ib.Flow
             });
         }
 
-        private static void Ending(string title, string[] lines)
+        private static void Ending(float fadeOutSeconds, string title, string[] lines)
         {
             if (Busy)
             {
@@ -167,14 +172,16 @@ namespace Ib.Flow
             Busy = true;
             GameFlow.SetInputLocked(true);
             GameFlow.SetState(GameState.Ending);
-            Presentation.FadeToBlack(FadeSeconds * 3f, () =>
+            Presentation.FadeToBlack(fadeOutSeconds, () =>
                 Presentation.ShowEnding(title, lines, () =>
                     SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex)));
         }
 
         internal static void Reset() => Busy = false;
 
-        private static void Fade(System.Action atBlack)
+        private static void Fade(System.Action atBlack) => Fade(FadeSeconds, atBlack);
+
+        private static void Fade(float fadeOutSeconds, System.Action atBlack)
         {
             if (Busy)
             {
@@ -183,7 +190,7 @@ namespace Ib.Flow
 
             Busy = true;
             GameFlow.SetInputLocked(true);
-            Presentation.FadeToBlack(FadeSeconds, () =>
+            Presentation.FadeToBlack(fadeOutSeconds, () =>
             {
                 atBlack();
                 Presentation.FadeFromBlack(FadeSeconds, () =>

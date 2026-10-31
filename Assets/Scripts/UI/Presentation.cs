@@ -5,7 +5,7 @@ using UnityEngine.SceneManagement;
 
 namespace Ib.UI
 {
-    public enum HintId { Explore = 1, AnswerPhone = 2, GetOut = 3, FindKey = 4, GetStaffCard = 5, OpenDrawer = 6 }
+    public enum HintId { Explore = 1, AnswerPhone = 2, GetOut = 3, FindKey = 4, GetStaffCard = 5, OpenDrawer = 6, GetFlash = 7 }
 
     /// <summary>
     /// UI 对外入口（接口见 Docs/Interfaces.md）。场景里不用摆任何东西：每次加载场景自动生成整套 UI。

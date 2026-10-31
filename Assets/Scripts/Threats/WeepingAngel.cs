@@ -12,9 +12,11 @@ namespace Ib.Threats
     /// 哭泣天使（§4.1 / §4.2）。三个阶段，每个阶段换一套外形：
     /// - Still  静止：双手捂脸站在展台上，什么都不做。
     /// - Peek   偷看：松手回看。不被注视时原地慢慢转身朝向玩家，被注视时不动。
-    /// - Attack 攻击：下展台，沿固定路线在一层巡逻；发现玩家后追击，碰到玩家就抓住（黑屏 GAME OVER）。
+    /// - Attack 攻击：下展台，沿固定路线在一层巡逻；发现玩家后追击，碰到玩家就抓住（jump scare 后黑屏 GAME OVER）。
+    ///   玩家还在楼上时不下展台，先瞬移到一楼楼梯脚等着，玩家下楼才开始。
     ///
-    /// 注视规则（R4-1）：玩家看着它时它完全不动。"看着" = 在相机视锥内 + 视线没被挡 + 被手电照着。
+    /// 注视规则（R4-1）：玩家看着它时它完全不动。"看着" = 在相机视锥内 + 视线没被挡 + 看得清。
+    /// 看得清：全馆灯亮着（闭馆后，还没拿到手电）就够了；停电后必须被手电照着，
     /// 手电关着、或者追击时闪烁灭掉的那一拍，都不算看见。
     /// 攻击阶段里连续盯着它超过 3 秒，它会直接进入追击（手电随之开始闪），所以不能靠一直盯着拖住它。
     /// </summary>
@@ -59,6 +61,20 @@ namespace Ib.Threats
         [Tooltip("进入攻击阶段时，从展台中心往正前方走多远落地。")]
         [SerializeField, Min(0f)] private float stepOffPlinth = 1.1f;
 
+        [Header("楼下等待")]
+        [Tooltip("一楼地面的世界高度（判断玩家在不在楼上的基准）。")]
+        [SerializeField] private float groundFloorY = 0f;
+        [Tooltip("玩家高出一楼地面这么多算还在楼上：天使不下展台，先到楼梯脚等着。")]
+        [SerializeField, Min(0f)] private float upstairsMargin = 4f;
+        [Tooltip("玩家高出一楼地面不到这个高度就算已下楼：天使恢复正常追击。")]
+        [SerializeField, Min(0f)] private float downstairsMargin = 1.5f;
+        [Tooltip("楼梯脚等待点用的出生点名（PlayerSpawnPoint）。")]
+        [SerializeField] private string stairsSpawnName = "DBG7_Stairs_1F";
+        [Tooltip("找不到楼梯脚标记时的兜底坐标（世界）。")]
+        [SerializeField] private Vector3 stairsFallback = new Vector3(32.2f, 0f, 32.9f);
+        [Tooltip("等待点在楼梯脚东侧多少米（离楼梯口留点距离）。")]
+        [SerializeField, Min(0f)] private float stairsWaitOffsetEast = 2f;
+
         /// <summary>当前阶段。</summary>
         public Phase CurrentPhase => phase;
 
@@ -80,6 +96,7 @@ namespace Ib.Threats
 
         private FirstPersonController player;
         private Camera playerCamera;
+        private bool waitingDownstairs;
 
         private void Awake()
         {
@@ -140,6 +157,7 @@ namespace Ib.Threats
             else
             {
                 // 回到展台上的原位；静止阶段连朝向一起复原，偷看阶段保留当前朝向
+                waitingDownstairs = false;
                 agent.enabled = false;
                 transform.SetPositionAndRotation(homePosition, phase == Phase.Still ? homeRotation : transform.rotation);
             }
@@ -157,9 +175,18 @@ namespace Ib.Threats
 
         private void StartAttack()
         {
+            waitingDownstairs = false;
+
+            // 玩家还在楼上（监控过场 / CP3 重生）：不下展台，先去一楼楼梯脚等着。
+            // 位置在雕塑厅监控画面（Feed 0）的背后，雪花退去时画面里是空的。
+            if (PlayerUpstairs() && TryWaitByStairs())
+            {
+                return;
+            }
+
             // 从展台正前方下地（展台 1.2 m 见方），找最近的导航网格点
             Vector3 start = homePosition + homeRotation * Vector3.forward * stepOffPlinth;
-            start.y = 0f;
+            start.y = groundFloorY;
             if (NavMesh.SamplePosition(start, out NavMeshHit hit, 2f, NavMesh.AllAreas))
             {
                 start = hit.position;
@@ -176,6 +203,55 @@ namespace Ib.Threats
             patrolIndex = NearestWaypoint();
             patrolDirection = 1;
             GoToWaypoint();
+        }
+
+        private bool PlayerUpstairs()
+        {
+            ResolvePlayer();
+            return player != null && player.transform.position.y > groundFloorY + upstairsMargin;
+        }
+
+        /// <summary>瞬移到楼梯脚东侧站定，朝向楼梯口。落不到导航网格上就返回 false，退回从展台下地。</summary>
+        private bool TryWaitByStairs()
+        {
+            Vector3 stairs = stairsFallback;
+            bool found = false;
+            foreach (PlayerSpawnPoint mark in FindObjectsByType<PlayerSpawnPoint>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (mark.name == stairsSpawnName)
+                {
+                    stairs = mark.transform.position;
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
+            {
+                Debug.LogWarning("[WeepingAngel] 场景里没有出生点 " + stairsSpawnName + "，用兜底坐标。", this);
+            }
+
+            Vector3 spot = stairs + Vector3.right * stairsWaitOffsetEast;
+            spot.y = groundFloorY;
+
+            agent.enabled = true;
+            if (!NavMesh.SamplePosition(spot, out NavMeshHit hit, 2f, NavMesh.AllAreas) || !agent.Warp(hit.position))
+            {
+                agent.enabled = false;
+                Debug.LogWarning("[WeepingAngel] 楼梯脚没有导航网格，退回从展台下地。", this);
+                return false;
+            }
+
+            agent.speed = patrolSpeed;
+            agent.isStopped = true;
+            agent.velocity = Vector3.zero;
+            waitingDownstairs = true;
+
+            // 朝向楼梯口
+            Vector3 to = stairs - transform.position;
+            to.y = 0f;
+            transform.rotation = Quaternion.LookRotation(to.sqrMagnitude > 0.01f ? to.normalized : Vector3.left);
+            return true;
         }
 
         // ================================================================ 每帧
@@ -224,9 +300,27 @@ namespace Ib.Threats
 
         private void UpdateAttack()
         {
-            if (!agent.enabled || !agent.isOnNavMesh || GameOverScreen.IsShowing)
+            if (!agent.enabled || !agent.isOnNavMesh || GameOverScreen.IsShowing || AngelJumpScare.Playing)
             {
                 return;
+            }
+
+            // 在楼梯脚等玩家下楼：被不被看都不动，等下到一楼再照常巡逻/追击
+            if (waitingDownstairs)
+            {
+                if (player == null || player.transform.position.y >= groundFloorY + downstairsMargin)
+                {
+                    agent.isStopped = true;
+                    agent.velocity = Vector3.zero;
+                    return;
+                }
+
+                waitingDownstairs = false;
+                agent.isStopped = false;
+                agent.speed = patrolSpeed;
+                patrolIndex = NearestWaypoint();
+                patrolDirection = 1;
+                GoToWaypoint();
             }
 
             // 被看着：原地定住，连惯性都不留。
@@ -291,8 +385,15 @@ namespace Ib.Threats
 
         private bool ComputeObserved()
         {
+            // 遮挡检测借用手电的射线（它会忽略玩家自己），所以手电组件必须在；它一直挂在玩家相机上
             PlayerFlashlight flashlight = PlayerFlashlight.Instance;
-            if (playerCamera == null || flashlight == null || !flashlight.IsLit)
+            if (playerCamera == null || flashlight == null)
+            {
+                return false;
+            }
+
+            bool needFlashlight = !MuseumLights.On;
+            if (needFlashlight && !flashlight.IsLit)
             {
                 return false;
             }
@@ -313,7 +414,7 @@ namespace Ib.Threats
                     continue;
                 }
 
-                if (flashlight.IsIlluminating(p, transform))
+                if (!needFlashlight || flashlight.IsIlluminating(p, transform))
                 {
                     return true;
                 }
@@ -356,23 +457,26 @@ namespace Ib.Threats
 
         private void CatchPlayer()
         {
-            Debug.Log("[WeepingAngel] 抓到玩家了 → GAME OVER。", this);
+            Debug.Log("[WeepingAngel] 抓到玩家了 → jump scare → GAME OVER。", this);
 
-            // 黑屏 + Continue；玩家点 Continue 才在检查点重生（GameOverScreen 负责）
-            GameOverScreen.Show();
-
-            lastSeenPlayerTime = -999f;
-            IsChasing = false;
-            RefreshFlashlightFlicker();
-
-            // 回到巡逻起点，免得玩家一重生又贴脸
-            if (patrolPath != null && patrolPath.Count > 0)
+            // 先放 jump scare，完了才黑屏 GAME OVER + Continue（GameOverScreen 负责）
+            AngelJumpScare.Play(this, () =>
             {
-                agent.Warp(patrolPath.GetPoint(0));
-                patrolIndex = 0;
-            }
-            agent.speed = patrolSpeed;
-            GoToWaypoint();
+                GameOverScreen.Show();
+
+                lastSeenPlayerTime = -999f;
+                IsChasing = false;
+                RefreshFlashlightFlicker();
+
+                // 回到巡逻起点，免得玩家一重生又贴脸
+                if (patrolPath != null && patrolPath.Count > 0)
+                {
+                    agent.Warp(patrolPath.GetPoint(0));
+                    patrolIndex = 0;
+                }
+                agent.speed = patrolSpeed;
+                GoToWaypoint();
+            });
         }
 
         // ================================================================ 巡逻

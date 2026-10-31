@@ -1,0 +1,8 @@
+BGM_Museum.mp3
+==============
+
+曲目：J.S. Bach — Air (from Orchestral Suite No. 3, BWV 1068), "Air on the G String"
+演奏：United States Air Force Band (Air Force Strings)
+来源：https://commons.wikimedia.org/wiki/File:Air_-_Air_Force_Strings_-_United_States_Air_Force_Band.mp3
+许可：Public domain（作曲 J.S. Bach 已进入公有领域；录音为美国联邦政府雇员职务作品，
+      不受版权保护，见 17 U.S.C. § 105）。

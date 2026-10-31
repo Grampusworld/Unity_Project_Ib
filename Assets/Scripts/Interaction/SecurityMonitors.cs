@@ -3,7 +3,6 @@ using Ib.Core;
 using Ib.Flow;
 using Ib.Threats;
 using UnityEngine;
-using UnityEngine.AI;
 
 namespace Ib.Interaction
 {
@@ -11,7 +10,7 @@ namespace Ib.Interaction
     /// 值班室六格监控（GDD §4.4，全片唯一的强制过场）。feeds[0] 是正中那格：雕塑厅，对着哭泣天使；其余五格是别的厅。
     /// 每台摄像机渲染到自己的 RenderTexture，屏幕材质 Ib/MonitorScreen 加夜视灰度、扫描线和雪花（_Static）。
     /// 只在玩家走近值班室时才渲染，而且按 feedFps 轮流刷新（正中那格过场里每帧刷新）。
-    /// 过场（MonitorTerminal 调 Play）：锁控制 → 镜头慢慢推向正中那格，越近雪花越密 → 满屏雪花时天使出动、离开画面 →
+    /// 过场（MonitorTerminal 调 Play）：锁控制 → 镜头慢慢推向正中那格，越近雪花越密 → 满屏雪花时天使出动（去一楼楼梯脚等） →
     /// 雪花退去，雕塑厅空了 → 镜头拉回 → 身后走廊里一声石头挪动 → 放开控制。
     /// Ib Level 由「布置展厅细节」生成。
     /// </summary>
@@ -135,9 +134,9 @@ namespace Ib.Interaction
             SetStatic(1f, 0.35f);
             yield return new WaitForSeconds(fullStaticHold * 0.5f);
 
-            // 满屏雪花的这一瞬，摄像头的注视断了：天使出动，离开画面
+            // 满屏雪花的这一瞬，摄像头的注视断了：天使出动。
+            // 玩家在二楼值班室，天使按 WeepingAngel 的楼下等待逻辑去一楼楼梯脚 —— 雪花退去时画面里是空的。
             SceneTransitions.ActivateAngels();
-            MoveAngelsOutOfFeed();
             yield return new WaitForSeconds(fullStaticHold * 0.5f);
 
             for (float t = 0f; t < clearSeconds; t += Time.deltaTime)
@@ -181,56 +180,6 @@ namespace Ib.Interaction
             {
                 materials[i].SetFloat(StaticId, i == 0 ? centre : others);
             }
-        }
-
-        /// <summary>天使出动后从展台下地，再挪到正中那台摄像机拍不到的地方 —— 雪花退去时画面里是空的。</summary>
-        private void MoveAngelsOutOfFeed()
-        {
-            Camera feed = feeds.Length > 0 ? feeds[0] : null;
-            if (feed == null)
-            {
-                return;
-            }
-
-            Plane[] planes = GeometryUtility.CalculateFrustumPlanes(feed);
-            foreach (WeepingAngel angel in WeepingAngel.All)
-            {
-                NavMeshAgent agent = angel.GetComponent<NavMeshAgent>();
-                if (agent == null || !agent.enabled || !agent.isOnNavMesh)
-                {
-                    continue;
-                }
-
-                Vector3 home = angel.transform.position;
-                Vector3 destination = agent.hasPath ? agent.destination : home;
-                for (int i = 0; i < 24; i++)
-                {
-                    float a = i * 15f * Mathf.Deg2Rad;
-                    float r = 5f + (i % 3) * 2.5f;
-                    Vector3 probe = home + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * r;
-                    if (!NavMesh.SamplePosition(probe, out NavMeshHit hit, 1.5f, NavMesh.AllAreas)
-                        || Mathf.Abs(hit.position.y - home.y) > 1f)
-                    {
-                        continue;
-                    }
-
-                    Bounds body = new Bounds(hit.position + Vector3.up * 1f, new Vector3(0.8f, 2f, 0.8f));
-                    if (GeometryUtility.TestPlanesAABB(planes, body) && !Occluded(feed.transform.position, body.center))
-                    {
-                        continue;
-                    }
-
-                    agent.Warp(hit.position);
-                    agent.SetDestination(destination);
-                    break;
-                }
-            }
-        }
-
-        private static bool Occluded(Vector3 eye, Vector3 target)
-        {
-            Vector3 to = target - eye;
-            return Physics.Raycast(eye, to.normalized, to.magnitude - 0.6f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
         }
     }
 }

@@ -505,10 +505,8 @@ namespace Ib.EditorTools
                 AddProp(s, "Plinth", bigPlinths[i, 0], y - 0.15f, bigPlinths[i, 1], 1.5f, 0.9f, 1.5f, Finishes.StoneWorn);
             }
 
-            GameObject cam = AddBox(sculpture, "SecurityCamera_Sculpture", new Vector3(13.5f, y + 4.4f, 20.5f),
-                new Vector3(0.25f, 0.2f, 0.45f), p.Key);
-            cam.transform.LookAt(angelPos + Vector3.up * 1.2f);
-            RemoveCollider(cam);
+            // 和其他厅一样用 Cam_Reception 那套监控模型（SecurityCamera），对着天使
+            SecurityCamera(sculpture, "SecurityCamera_Sculpture", new Vector3(13.5f, y + 4.4f, 20.5f), angelPos + Vector3.up * 1.2f);
 
             GameObject skylight = AddSlab(sculpture, "Skylight_Fake", 17.5f, 21.5f, 13f, 17f,
                 Floor1Height - 0.04f, Floor1Height - 0.005f, p.Skylight);
@@ -571,10 +569,10 @@ namespace Ib.EditorTools
             AddProp(gallery, "Pickup_StudioTicket", 23.2f, y + 1.4f, 9.27f, 0.18f, 0.01f, 0.1f, p.Key);   // 展柜玻璃罩顶上
             AddWallPanel(gallery, "Sketch_LilyLooksAtDoor", new Vector3(WestLineX + HalfWall, y + 1.4f, DutyDoorZ + 1.4f),
                 Vector3.right, 0.6f, 0.8f, p.Exhibit);
-            // 停电（≥ PowerOut）时电磁锁门滑开（Interfaces.md 场景切换与检查点）。门板在 x = 13 的墙里、沿 Z 宽 1.2 m，
-            // 往南（−Z）滑整整一个门宽，缩进 z 1.2–2.4 的墙体，门洞全空出来。slide 是世界位移，要乘 WorldScale
-            GameObject dutyDoor = AddDoorPanel(gallery, "Door_Duty_MagLock", false, WestLineX, DutyDoor, y, p.Door);
-            SetVector3(dutyDoor.AddComponent<MagLockDoor>(), "slide", new Vector3(0f, 0f, -SmallDoorWidth * WorldScale));
+            // 停电（≥ PowerOut）时电磁锁门以靠墙一侧竖边为轴，向值班室（−X）内开 90°（Interfaces.md 场景切换与检查点）。
+            // 合页边、门宽运行时从门板自己的包围盒算，这里不传参
+            AddDoorPanel(gallery, "Door_Duty_MagLock", false, WestLineX, DutyDoor, y, p.Door)
+                .AddComponent<MagLockDoor>();
             AddDoorPanel(gallery, "Door_Closed_Locked", false, WestLineX, LockedDoor, y, p.Door);
 
             // ---- 全家福厅：只有两件 ----
@@ -1008,9 +1006,9 @@ namespace Ib.EditorTools
             {
                 // 前台没有屏幕：便利贴贴在台面上、电话旁边
                 MakeTextPickup(Framed(LocalBox(desk, "Text_T5_StickyNote", new Vector3(-0.85f, 1.006f, 0.2f), new Vector3(0.17f, 0.012f, 0.17f), board), paper), "T5");
-                // 抽屉（员工那面 z = 0.43）还不会开：两份文件夹露在抽屉面板外，一左一右，避开中间的把手
-                MakeTextPickup(Framed(LocalBox(desk, "Text_T14_Workbook", new Vector3(-0.24f, 0.73f, 0.475f), new Vector3(0.26f, 0.22f, 0.012f), board), paper), "T14");
-                MakeTextPickup(Framed(LocalBox(desk, "Text_T15_CaseReport", new Vector3(0.24f, 0.73f, 0.475f), new Vector3(0.26f, 0.22f, 0.012f), board), paper), "T15");
+                // 两份文件夹贴在员工那面柜身上、抽屉（x ±0.35）左右两边：不挡抽屉拉出，也不被抽屉碰撞体遮住准星
+                MakeTextPickup(Framed(LocalBox(desk, "Text_T14_Workbook", NotePosT14, new Vector3(0.26f, 0.22f, 0.012f), board), paper), "T14");
+                MakeTextPickup(Framed(LocalBox(desk, "Text_T15_CaseReport", NotePosT15, new Vector3(0.26f, 0.22f, 0.012f), board), paper), "T15");
             }
 
             // ---- 1F 配电间：西墙上的检修单（东墙是电闸箱，南墙是保安柜）----
