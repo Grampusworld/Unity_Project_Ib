@@ -7,7 +7,8 @@ namespace Ib.UI
     /// <summary>
     /// 右下角按键提示，每行「键帽 + 英文说明」，文案来自 Resources/Texts/Controls.asset。
     /// 需要手电的行等 GameFlow.FlashlightObtained 再显示，不轮询。
-    /// 和准星一样跟着 GameFlow.IsAiming：主菜单、暂停、阅读、Game Over 时隐藏。
+    /// 和准星一样跟着 GameFlow.IsAiming：主菜单、暂停、阅读、Game Over 时隐藏；
+    /// 另外控制权被锁（GameFlow.InputLocked：过场、特写、检视）时也隐藏。
     /// </summary>
     internal sealed class ControlHints : MonoBehaviour
     {
@@ -73,7 +74,7 @@ namespace Ib.UI
 
         private void LateUpdate()
         {
-            float alpha = GameFlow.IsAiming ? 1f : 0f;
+            float alpha = GameFlow.IsAiming && !GameFlow.InputLocked ? 1f : 0f;
             if (group.alpha != alpha) group.alpha = alpha;
         }
 

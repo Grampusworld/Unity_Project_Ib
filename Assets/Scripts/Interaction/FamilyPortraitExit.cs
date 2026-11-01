@@ -10,7 +10,9 @@ namespace Ib.Interaction
     /// 二楼的《全家福》。画中馆和真实馆是同一个画架：
     /// PaintedGallery 时按 E → 黑屏回到黑屋（GDD §3.6 第 6 步）；
     /// 天使出动后、钥匙已经插在正门锁孔里（没开门）时按 E → 走进那块空白，真结局（§6.9）。
-    /// 回黑屋：镜头慢慢推向画面（对准画架上的 Canvas），推到一半开始慢慢变黑。
+    /// 回黑屋（出画第一拍，GDD §3.2 第五段，老大 2026-11-01）：镜头锁到画上、慢慢拉回到正对整幅画的位置，
+    /// 展厅从四周往里褪成黑色（ScreenVeil.Hole），只剩那幅画；画上叠一张同样的画（盖住画前的 Grampus 和两边灯光的差别），
+    /// 传回黑屋并把玩家摆在与草稿完全相同的相对位置 → 叠的画淡掉、黑幕往外散开，镜头回到手里时已经站在黑屋画架前。全程不剪。
     /// 真结局（老大 2026-11-01）：镜头推到画前、让残缺的全家福撑满画面 → 渐黑 → 画布换成补齐四个人的完整全家福
     /// （Resources/Paintings/FamilyPortrait_Complete）→ 亮屏停一会儿 → 照旧进真结局字幕（SceneTransitions.TrueEnding）。
     /// Ib Level 挂在 FamilyPortrait_Easel（需要 Collider）。
@@ -51,7 +53,185 @@ namespace Ib.Interaction
                 return;
             }
 
+            if (cam != null && PortraitRenderer() != null && SketchPortrait() != null)
+            {
+                StartCoroutine(PullBackToBlackRoom(cam));
+                return;
+            }
+
             StartCoroutine(PushIn(cam != null ? cam.transform : null, CanEnterBlank));
+        }
+
+        [Header("回黑屋 · 拉回 + 四周褪黑")]
+        [SerializeField, Min(0.1f)] private float pullSeconds = 4.2f;
+        [Tooltip("拉回结束时画面宽度占屏幕宽度的比例")]
+        [SerializeField, Range(0.2f, 0.9f)] private float pullFill = 0.5f;
+        [SerializeField, Min(0f)] private float vignetteFeather = 140f;
+        [SerializeField, Min(0.1f)] private float revealSeconds = 1.8f;
+
+        private const string SketchEasel = "FamilyPortraitSketch_Easel";
+
+        private IEnumerator PullBackToBlackRoom(Camera cam)
+        {
+            pushing = true;
+            GameFlow.SetInputLocked(true);
+            SceneTransitions.Hold(true);
+
+            Transform eye = cam.transform;
+            FirstPersonController player = eye.GetComponentInParent<FirstPersonController>();
+            Vector3 localPos = eye.localPosition;
+            Quaternion localRot = eye.localRotation;
+            float eyeHeight = player != null ? eye.position.y - player.transform.position.y : 1.3f;
+
+            Renderer art = PortraitRenderer();
+            Vector3 fromPos = eye.position;
+            Quaternion fromRot = eye.rotation;
+            // 两个画架的根节点都落在各自的地板上
+            Vector3 toPos = FramingPose(cam, art.transform, eyeHeight, transform.position.y, out Quaternion toRot, out float distance);
+
+            // 1) 锁到画上、慢慢拉回；四周从 30% 处开始往里褪黑；最后 20% 把同一张画淡淡叠上去
+            Texture tex = art.sharedMaterial.GetTexture("_BaseMap");
+            for (float t = 0f; t < pullSeconds; t += Time.deltaTime)
+            {
+                float k = Mathf.SmoothStep(0f, 1f, t / pullSeconds);
+                eye.SetPositionAndRotation(Vector3.Lerp(fromPos, toPos, k), Quaternion.Slerp(fromRot, toRot, k));
+                float close = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.3f, 0.95f, t / pullSeconds));
+                Veil(cam, art.transform, close, Mathf.InverseLerp(0.8f, 1f, t / pullSeconds), tex);
+                yield return null;
+            }
+
+            eye.SetPositionAndRotation(toPos, toRot);
+            Veil(cam, art.transform, 1f, 1f, tex);
+            yield return new WaitForSeconds(0.5f);
+
+            // 2) 只剩那幅画：传回黑屋，摆到与草稿相同的相对位置（同一套画架几何，画面在屏幕上纹丝不动）
+            SceneTransitions.ReturnToBlackRoomSeamless();
+            Renderer sketch = SketchPortrait();
+            eye.localPosition = localPos;
+            eye.localRotation = localRot;
+            if (player != null && sketch != null)
+            {
+                Vector3 sketchEye = FramingPoseAt(sketch.transform, distance, eyeHeight, sketch.transform.parent.position.y, out Quaternion sketchRot);
+                float yaw = sketchRot.eulerAngles.y;
+                player.Teleport(sketchEye - Vector3.up * eyeHeight, Quaternion.Euler(0f, yaw, 0f));
+                PlayerLook look = player.GetComponent<PlayerLook>();
+                if (look != null)
+                {
+                    look.ResetLook(yaw);
+                }
+            }
+
+            yield return null;
+
+            // 3) 叠的画淡掉（露出黑屋里的草稿），黑幕往外散开
+            Transform sketchQuad = sketch != null ? sketch.transform : art.transform;
+            for (float t = 0f; t < revealSeconds; t += Time.deltaTime)
+            {
+                float k = t / revealSeconds;
+                Veil(cam, sketchQuad, 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.3f, 1f, k)), 1f - Mathf.InverseLerp(0f, 0.4f, k), tex);
+                yield return null;
+            }
+
+            ScreenVeil.Clear();
+            SceneTransitions.Hold(false);
+            GameFlow.SetInputLocked(false);
+            pushing = false;
+        }
+
+        /// <summary>正对画、画宽约占屏宽 pullFill、视线水平（pitch 0）的相机位姿；离墙太近时往前收。</summary>
+        private Vector3 FramingPose(Camera cam, Transform quad, float eyeHeight, float floorY, out Quaternion rot, out float distance)
+        {
+            float halfW = Mathf.Abs(quad.lossyScale.x) * 0.5f;
+            float halfH = Mathf.Abs(quad.lossyScale.y) * 0.5f;
+            float tanV = Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad);
+            float tanH = tanV * cam.aspect;
+            distance = halfW / (pullFill * tanH);
+
+            // 画顶要在画面里（视线水平，画比眼睛高）
+            float above = quad.position.y + halfH - (floorY + eyeHeight);
+            distance = Mathf.Max(distance, above / (tanV * 0.92f));
+
+            Vector3 normal = -quad.forward;
+            normal.y = 0f;
+            normal.Normalize();
+            // 拉回路上有墙就往前收（画前的人、玩家自己、画架不算）
+            float wall = distance + 0.3f;
+            foreach (RaycastHit hit in Physics.RaycastAll(quad.position, normal, wall, ~0, QueryTriggerInteraction.Ignore))
+            {
+                Transform h = hit.collider.transform;
+                if (h.IsChildOf(transform) || h.GetComponentInParent<FirstPersonController>() != null
+                    || (WorldState.Crowd != null && h.IsChildOf(WorldState.Crowd.transform)))
+                {
+                    continue;
+                }
+
+                wall = Mathf.Min(wall, hit.distance);
+            }
+
+            distance = Mathf.Max(1.2f, Mathf.Min(distance, wall - 0.3f));
+
+            return FramingPoseAt(quad, distance, eyeHeight, floorY, out rot);
+        }
+
+        private static Vector3 FramingPoseAt(Transform quad, float distance, float eyeHeight, float floorY, out Quaternion rot)
+        {
+            // Quad 可见面是本地 −Z（画架上转了 180°，朝观众）
+            Vector3 normal = -quad.forward;
+            normal.y = 0f;
+            normal.Normalize();
+            Vector3 p = quad.position + normal * distance;
+            p.y = floorY + eyeHeight;
+            rot = Quaternion.LookRotation(-normal, Vector3.up);
+            return p;
+        }
+
+        /// <summary>close：0 = 不遮，1 = 只剩画；card：叠在画上的同一张画的不透明度。</summary>
+        private void Veil(Camera cam, Transform quad, float close, float card, Texture tex)
+        {
+            if (!ScreenVeil.ScreenRect(cam, quad, out Rect painting))
+            {
+                painting = new Rect(0.25f, 0.25f, 0.5f, 0.5f);
+            }
+
+            // 洞从比屏幕大一圈收到画的轮廓
+            Rect full = Rect.MinMaxRect(-0.3f, -0.3f, 1.3f, 1.3f);
+            Rect hole = Rect.MinMaxRect(
+                Mathf.Lerp(full.xMin, painting.xMin, close), Mathf.Lerp(full.yMin, painting.yMin, close),
+                Mathf.Lerp(full.xMax, painting.xMax, close), Mathf.Lerp(full.yMax, painting.yMax, close));
+            ScreenVeil.Hole(hole, vignetteFeather * (1f - 0.9f * close), close > 0.001f ? 1f : 0f);
+            ScreenVeil.Card(tex, painting, card, new Color(0.78f, 0.74f, 0.7f));
+        }
+
+        private Renderer SketchPortrait()
+        {
+            GameObject easel = WorldState.BlackRoom != null ? FindChild(WorldState.BlackRoom.transform, SketchEasel) : null;
+            if (easel == null)
+            {
+                return null;
+            }
+
+            foreach (Renderer r in easel.GetComponentsInChildren<Renderer>(true))
+            {
+                if (r.name == "FamilyPortrait")
+                {
+                    return r;
+                }
+            }
+
+            return null;
+        }
+
+        private static GameObject FindChild(Transform root, string name)
+        {
+            foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (t.name == name)
+                {
+                    return t.gameObject;
+                }
+            }
+
+            return null;
         }
 
         private const string CompleteTexture = "Paintings/FamilyPortrait_Complete";

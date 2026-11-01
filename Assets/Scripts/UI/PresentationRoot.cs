@@ -71,6 +71,7 @@ namespace Ib.UI
             if (Ending.IsShowing) { }
             else if (Confirm.IsOpen) Confirm.Cancel();
             else if (Reader.IsOpen) Reader.Close();
+            else if (Presentation.IsInspecting) { }
             else if (Settings.IsOpen) Settings.Close();
             else if (Menu.IsOpen) { }
             else Pause.EscapePressed();

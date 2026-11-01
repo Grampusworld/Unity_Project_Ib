@@ -32,6 +32,12 @@ namespace Ib.Flow
         public static bool IsPaused { get; private set; }
 
         /// <summary>
+        /// 控制权被拿走（过场、特写、检视、推镜头……任何调 SetInputLocked(true) 的地方）。
+        /// 右下角按键提示跟着它隐藏，以后新加的过场只要锁输入就自动生效。
+        /// </summary>
+        public static bool InputLocked { get; private set; }
+
+        /// <summary>
         /// 准星、交互描边、按 E 只在正常游玩时有效。
         /// 主菜单、暂停、Game Over、读纸面都盖住画面中心，这几段不算瞄准。
         /// </summary>
@@ -41,6 +47,7 @@ namespace Ib.Flow
             && !IsPaused
             && !GameOverScreen.IsShowing
             && !Presentation.IsReading
+            && !Presentation.IsInspecting
             && !Presentation.IsConfirming;
 
         /// <summary>(from, to)</summary>
@@ -160,6 +167,7 @@ namespace Ib.Flow
 
         internal static void SetInputLocked(bool locked)
         {
+            InputLocked = locked;
             FirstPersonController player = UnityEngine.Object.FindAnyObjectByType<FirstPersonController>();
             if (player != null)
             {
@@ -190,6 +198,8 @@ namespace Ib.Flow
             // 关掉"进入 Play 时重载域"也要干净：每次加载都复位
             State = GameState.MainMenu;
             IsPaused = false;
+            InputLocked = false;
+            Presentation.IsInspecting = false;
             AudioListener.pause = false;
             Time.timeScale = 1f;
             menuRegistered = false;

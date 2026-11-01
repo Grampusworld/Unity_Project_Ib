@@ -1,6 +1,7 @@
 using Ib.Core;
 using Ib.Environment;
 using Ib.Interaction;
+using Ib.Player;
 using Ib.Threats;
 using Ib.UI;
 using UnityEngine;
@@ -28,22 +29,44 @@ namespace Ib.Flow
             Fade(fadeOutSeconds, () =>
             {
                 atBlack?.Invoke();
-                GameFlow.SetState(GameState.BlackRoomReturn);
-                Checkpoints.ReachAndTeleport(Checkpoints.BlackRoom); // 传回黑屋会把黑屋重新启用、门解锁
-
-                // 门还在，但锁死：只能走空画框
-                MuseumEntrance entrance = Object.FindAnyObjectByType<MuseumEntrance>();
-                DoubleDoor door = entrance != null ? entrance.GetComponent<DoubleDoor>() : null;
-                if (door != null)
-                {
-                    door.SetLocked(true);
-                }
+                ArriveInBlackRoom();
             });
         }
 
-        /// <summary>第 7 步：穿过空画框 → 黑屏 → 二楼家庭厅，闭馆。</summary>
-        public static void EnterAfterHours()
+        /// <summary>
+        /// 第 6 步的无缝版（FamilyPortraitExit 用）：调用方自己锁控制、遮住画面（只剩那幅画），这里只切状态、
+        /// 传回黑屋出生点、锁门。调用方随后把玩家摆到与草稿相对的位置，再把画面放开。
+        /// </summary>
+        public static void ReturnToBlackRoomSeamless() => ArriveInBlackRoom();
+
+        private static void ArriveInBlackRoom()
         {
+            GameFlow.SetState(GameState.BlackRoomReturn);
+            Checkpoints.ReachAndTeleport(Checkpoints.BlackRoom); // 传回黑屋会把黑屋重新启用、门解锁
+
+            // 门还在，但锁死：只能走空画框
+            MuseumEntrance entrance = Object.FindAnyObjectByType<MuseumEntrance>();
+            DoubleDoor door = entrance != null ? entrance.GetComponent<DoubleDoor>() : null;
+            if (door != null)
+            {
+                door.SetLocked(true);
+            }
+        }
+
+        /// <summary>
+        /// 第 6b / 7 步：穿过空画框 → 二楼全家福厅，闭馆。
+        /// 有门洞（PaintingPortal）时：冷白光一闪，玩家按门洞的变换直接落到北墙画框前（朝向跟着转），
+        /// 黑屋先留着（北墙画框还是门洞，等玩家背过去才换成《美术馆》并停用黑屋，见 TheGalleryFrame）。
+        /// 没有门洞时退回原来的黑屏传送。
+        /// </summary>
+        public static void EnterAfterHours(PaintingPortal through = null)
+        {
+            if (through != null && through.Partner != null)
+            {
+                CarryThrough(through);
+                return;
+            }
+
             Fade(() =>
             {
                 GameFlow.SetState(GameState.AfterHours);
@@ -53,6 +76,52 @@ namespace Ib.Flow
                     WorldState.BlackRoom.SetActive(false);
                 }
             });
+        }
+
+        private static void CarryThrough(PaintingPortal through)
+        {
+            if (Busy)
+            {
+                return;
+            }
+
+            FirstPersonController player = Object.FindAnyObjectByType<FirstPersonController>();
+            if (player == null)
+            {
+                return;
+            }
+
+            Busy = true;
+            GameFlow.SetInputLocked(true);
+            through.Carry(player.transform.position, player.transform.eulerAngles.y, 0.7f, out Vector3 feet, out float yaw);
+
+            ScreenVeil.Flash(FlashColor, 1f);
+            GameFlow.SetState(GameState.AfterHours);
+            Checkpoints.Reach(Checkpoints.AfterHours);
+            player.Teleport(feet, Quaternion.Euler(0f, yaw, 0f));
+            PlayerLook look = player.GetComponent<PlayerLook>();
+            if (look != null)
+            {
+                look.ResetLook(yaw);
+            }
+
+            player.StartCoroutine(FadeFlash());
+        }
+
+        private static readonly Color FlashColor = new Color(0.82f, 0.9f, 1f);
+
+        private static System.Collections.IEnumerator FadeFlash()
+        {
+            const float seconds = 0.7f;
+            for (float t = 0f; t < seconds; t += Time.unscaledDeltaTime)
+            {
+                ScreenVeil.Flash(FlashColor, 1f - t / seconds);
+                yield return null;
+            }
+
+            ScreenVeil.Flash(FlashColor, 0f);
+            Busy = false;
+            GameFlow.SetInputLocked(false);
         }
 
         /// <summary>第 10 步：楼梯中段断电（不黑屏）。OnPowerOut 同一刻发出，电磁锁门自己打开。</summary>
@@ -216,6 +285,9 @@ namespace Ib.Flow
         }
 
         internal static void Reset() => Busy = false;
+
+        /// <summary>自己管锁控制的过场（出画拉回）占住 Busy，期间别的切换不进来。</summary>
+        internal static void Hold(bool on) => Busy = on;
 
         private static void Fade(System.Action atBlack) => Fade(FadeSeconds, atBlack);
 

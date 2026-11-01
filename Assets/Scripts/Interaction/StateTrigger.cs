@@ -1,3 +1,4 @@
+using Ib.Environment;
 using Ib.Flow;
 using Ib.Player;
 using UnityEngine;
@@ -25,7 +26,9 @@ namespace Ib.Interaction
 
             if (step == Step.EmptyFrame && GameFlow.State == GameState.BlackRoomReturn)
             {
-                SceneTransitions.EnterAfterHours();
+                // 空画框里有门洞就按门洞穿过去（无缝），没有就黑屏传送
+                SceneTransitions.EnterAfterHours(transform.parent != null
+                    ? transform.parent.GetComponentInChildren<PaintingPortal>() : null);
             }
             // 下楼接电话也会经过楼梯平台：接过电话、重新上楼时才断电（第 8 → 10 步）
             else if (step == Step.PowerOut && GameFlow.State == GameState.AfterHours && GameFlow.PhoneAnswered)

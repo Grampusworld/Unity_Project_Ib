@@ -36,6 +36,10 @@ namespace Ib.Core
         public const string PaperFlip = "PaperFlip";
         public const string DoorSlam = "DoorSlam";
         public const string DoorCreak = "DoorCreak";
+        /// <summary>布展声：挂画钩在铜轨上滑、落槽，1.6 s（Tools/gen_rearrange_sfx.py）。</summary>
+        public const string HangingHook = "HangingHook";
+        /// <summary>布展声：画框 / 底座贴着墙或地板被拖动，最后放稳，1.9 s（Tools/gen_rearrange_sfx.py）。</summary>
+        public const string FrameScrape = "FrameScrape";
 
         private static readonly Dictionary<string, AudioClip> cache = new Dictionary<string, AudioClip>();
 

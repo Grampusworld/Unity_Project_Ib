@@ -20,6 +20,9 @@ namespace Ib.UI
         /// <summary>纸面阅读器是否打开。阅读时不冻结时间。</summary>
         public static bool IsReading => root != null && root.Reader.IsOpen;
 
+        /// <summary>正在检视手里的东西（KeyInspect）：不算瞄准，Esc 交给检视自己处理（不弹暂停菜单）。</summary>
+        public static bool IsInspecting { get; set; }
+
         /// <summary>屏幕上方淡入一行，3 秒后淡出。</summary>
         public static void ShowHint(HintId id)
         {

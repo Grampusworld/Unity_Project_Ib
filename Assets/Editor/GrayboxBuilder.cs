@@ -281,6 +281,12 @@ namespace Ib.EditorTools
             // 二楼名画人物：换 Girl 模型 + 布置破框站点（以前是重建后手动跑两个菜单，2026-11-01 漏跑导致两只退回灰盒胶囊）
             PaintingFigureSetup.Setup();
             PaintingFigureBreakoutSetup.Setup();
+            // 出画演出：黑屋空画框门洞 + 北墙画框（门洞 → 《美术馆》）（GrayboxBuilder.PaintingExit.cs，会再存一次场景）
+            SetupPaintingExit();
+            // 布展变化：看不见才变的门 / 画 / 展品（GrayboxBuilder.Rearrange.cs，会再存一次场景）
+            SetupRearrange();
+            // 正门锁孔、锁舌和钥匙模型（GrayboxBuilder.MainDoorKey.cs，会再存一次场景）
+            SetupMainDoorKey();
 
             Debug.Log("[GrayboxBuilder] 完成：" + ScenePath);
         }
