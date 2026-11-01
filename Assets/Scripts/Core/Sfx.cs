@@ -17,6 +17,22 @@ namespace Ib.Core
         public const string StoneScrape = "StoneScrape";
         public const string AngelScream = "AngelScream";
         public const string AngelScreamRec = "AngelScreamRec";
+        /// <summary>名画人物破框出场：爆裂 + 碎屑 + 木框闷响 + 展厅混响，2.2 s。</summary>
+        public const string GlassBreak = "GlassBreak";
+        /// <summary>名画人物从画框里冲出来（伏击）：爆点 + 两层女声尖叫 + 混响，2.35 s（Ib 美术）。</summary>
+        public const string PaintingScream = "PaintingScream";
+        /// <summary>被追击心跳：1.000 s = 60 BPM 一拍，无缝循环（Ib 美术）。</summary>
+        public const string ChaseHeartbeat = "ChaseHeartbeat";
+        /// <summary>开馆人群声：24 s 无缝循环，只在 NPC_Crowd 显示时播（Ib 美术）。</summary>
+        public const string CrowdMurmur = "CrowdMurmur";
+        /// <summary>环境底噪：40 s 无缝循环，全程铺底（Ib 美术）。</summary>
+        public const string AmbientRoomTone = "AmbientRoomTone";
+        /// <summary>断电后的阴冷底噪：40 s 无缝循环，断电时交叉淡入（Ib 美术）。</summary>
+        public const string AmbientRoomTonePowerOut = "AmbientRoomTone_PowerOut";
+        /// <summary>二楼厕所异响：3.2 s，接完电话后播一次（Ib 美术）。</summary>
+        public const string ToiletNoise = "ToiletNoise";
+        /// <summary>监控雪花底噪：3.0 s 无缝循环，随屏幕雪花（_Static）密度调音量和音高（Ib 技术合成）。</summary>
+        public const string MonitorStatic = "MonitorStatic";
         public const string PaperFlip = "PaperFlip";
         public const string DoorSlam = "DoorSlam";
         public const string DoorCreak = "DoorCreak";

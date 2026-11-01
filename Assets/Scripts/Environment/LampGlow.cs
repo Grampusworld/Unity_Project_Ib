@@ -26,6 +26,7 @@ namespace Ib.Environment
 
         private void Apply(bool on)
         {
+            on |= name.EndsWith(MuseumLights.StillFlickering); // 那盏灯断电后还在闪，灯罩跟着亮
             foreach (Renderer r in glows)
             {
                 if (r != null)

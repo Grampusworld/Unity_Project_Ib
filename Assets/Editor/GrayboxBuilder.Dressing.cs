@@ -291,10 +291,9 @@ namespace Ib.EditorTools
             FireExtinguisher(safety, "Extinguisher_Costume_W", new Vector3(EastLineX + HalfWall, y1, 12.5f), Vector3.right);
             FireExtinguisher(safety, "Extinguisher_Gallery_W", new Vector3(WestLineX + HalfWall, y2, 5.8f), Vector3.right);
 
-            // ---- 出口指示灯（绿）：正门里侧、接待厅两侧门、二层厕所门 ----
+            // ---- 出口指示灯（绿）：正门里侧、二层厕所门 ----
+            // 接待厅两侧门原来的绿色出口牌已删，改成厅名门牌，见 GrayboxBuilder.Wayfinding.cs
             ExitSign(safety, "Exit_MainDoor", new Vector3(MainDoorX, y1 + MainDoorHeight + 0.45f, HalfWall), Vector3.forward);
-            ExitSign(safety, "Exit_Reception_W", new Vector3(WestLineX + HalfWall, y1 + HallDoorHeight + 0.45f, SouthDoorZ), Vector3.right);
-            ExitSign(safety, "Exit_Reception_E", new Vector3(EastLineX - HalfWall, y1 + HallDoorHeight + 0.45f, SouthDoorZ), Vector3.left);
             ExitSign(safety, "Exit_Gallery_Toilet", new Vector3(EastLineX - HalfWall, y2 + SmallDoorHeight + 0.45f, ToiletDoorZ), Vector3.left);
 
             // ---- 监控摄像头（带红色指示灯），对着各厅中间 ----

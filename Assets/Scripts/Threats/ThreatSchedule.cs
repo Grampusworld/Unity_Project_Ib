@@ -26,6 +26,9 @@ namespace Ib.Threats
         /// <summary>强制过场（监控屏）期间为 true：会动的馆藏原地停住，不会抓人。</summary>
         public static bool Paused { get; set; }
 
+        /// <summary>看画特写（LilyPortraitInspect）期间为 true：馆藏照常走动，只是碰到玩家也不抓。</summary>
+        public static bool NoCatch { get; set; }
+
         // 过场中途退回主菜单（重新加载场景）也要复位
         [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void Init()
@@ -34,7 +37,11 @@ namespace Ib.Threats
             UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
         }
 
-        private static void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode) => Paused = false;
+        private static void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+        {
+            Paused = false;
+            NoCatch = false;
+        }
 
         /// <summary>
         /// 人台、名画人物：拿到手电那一刻出动（此时状态仍是 PowerOut），一直到天使出动；结局和更早的状态都不动。

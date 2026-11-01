@@ -141,7 +141,7 @@ namespace Ib.Threats
             }
 
             d.y = 0f;
-            if (d.magnitude <= catchDistance)
+            if (d.magnitude <= catchDistance && !ThreatSchedule.NoCatch)
             {
                 Debug.Log("[MannequinPatrol] 碰到玩家 → GAME OVER。", this);
                 GameOverScreen.Show();

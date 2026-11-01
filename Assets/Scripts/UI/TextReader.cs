@@ -15,6 +15,7 @@ namespace Ib.UI
 
         private GameObject view;
         private Text title;
+        private Text number;
         private Text body;
         private Action onClosed;
         private int openedFrame = -1;
@@ -37,6 +38,10 @@ namespace Ib.UI
 
             reader.title = UIFactory.Label(paper.transform, "Title", "", 34, TextAnchor.UpperCenter, Ink);
             Inset(reader.title.rectTransform, 50f, 50f, 50f, 670f);
+
+            // 收集编号：纸面左上角一行小字
+            reader.number = UIFactory.Label(paper.transform, "Number", "", 20, TextAnchor.UpperLeft, new Color(0.4f, 0.36f, 0.3f));
+            Inset(reader.number.rectTransform, 36f, 36f, 20f, 730f);
 
             reader.body = UIFactory.Label(paper.transform, "Body", "", 28, TextAnchor.UpperLeft, Ink);
             reader.body.lineSpacing = 1.15f;
@@ -71,6 +76,7 @@ namespace Ib.UI
             if (IsOpen) Close();
 
             title.text = doc.title;
+            number.text = TextCatalog.Label(textId);
             body.text = doc.body;
             FontStyle style = doc.hand == TextDocument.Hand.Print ? FontStyle.Normal : FontStyle.Italic;
             title.fontStyle = style;

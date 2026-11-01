@@ -17,6 +17,11 @@
 | 8 | 调试：一层楼梯脚 |
 | 9 | 调试：二层楼梯口（面朝长廊） |
 
+> **两只名画人物已接进重建流程（2026-11-01）**：`GrayboxBuilder.Build()` 最后会调用 `PaintingFigureSetup.Setup()` + `PaintingFigureBreakoutSetup.Setup()`，生成灰盒后自动换 Girl、绑破框站点、写回 0.35 / 0.85 的出场延迟，不用再手动点菜单。此前要靠人工补跑，漏跑会退回红色胶囊、两只都用 0.3 s 同时出场。
+> 单独修已有场景仍可用菜单：**Tools → Ib → 二楼名画人物换成 Girl 模型**、**Tools → Ib → 布置名画人物破框**（两步都会自己保存场景）。
+> 第一步还会给两只预挂一个**禁用状态**的 `NavMeshAgent`，否则 Play 开始时运行时代码新建的 Agent 会把人物吸到最近的导航网格（实测掉到一楼/楼外）。
+> **二楼导航网格检查（2026-11-01）**：20:31 重建留下的 `Graybox_NavMesh_2F.asset` 是空的（6.9 KB，0 个可行走面），人物一启用 Agent 就掉到一楼。已重烘为约 25 KB。以后重建后看一眼资产大小；不正常就重跑 **Tools → Ib → 布置哭泣天使**（会重烘两层导航网格）。`PaintingFigure.PlaceOnMesh` 已改为先采样成功再启用 Agent，采不到会保持禁用并直线兜底，不会再把人瞬移走。
+
 ## 调试菜单（F1，2026-10-22）
 - `Assets/Scripts/Core/DebugMenu.cs`，挂在 `--- Game ---` 上。只在编辑器 / Development Build 生效。
 - 打开时：光标解锁、玩家输入屏蔽（`FirstPersonController.InputBlocked`）、`PlayerLook.SuspendPointerCapture = true`（防止点菜单顺手把光标锁回去）。关闭时恢复并重新锁光标。
@@ -311,3 +316,9 @@
   - 时序：停电（进入 PowerOut）→ `PowerClunk` + 2.5 s 向里开；拿到手电后玩家进屋（离门墙 > 1.5 m、同一层，位置判断，无新触发器）→ 0.15 s 猛关 + `DoorSlam`；监控过场 `SecurityMonitors.Playing` 由 true 变 false → 3 s 缓开 + `DoorCreak`。关着时门板碰撞体跟着回到原位，出不去。
   - 读档 / 重生：状态 < PowerOut 瞬间关；≥ PowerOut 瞬间开着；PowerOut 且已经关过时重生会重新打开并允许再关一次。
   - 生成器（`GrayboxBuilder.cs` 约 574 行）只留 `AddComponent<MagLockDoor>()`，删掉了 `SetVector3(..., "slide", ...)`。音效 `DoorSlam` / `DoorCreak` 在 `Tools/gen_sfx.py` 末尾合成，生成命令不变：`python3 Tools/gen_sfx.py Assets/Resources/Audio`。
+
+## 2026-11-01 修正（第 7 轮）
+- 二楼名画人物 jump scare：原来按包围盒顶找脸，但 Girl 模型是趴着从画框里爬出来的，包围盒顶是画框顶，结果镜头对着画框和下半身。现在 `PaintingFigure.Catch` 把 `Visual_Girl` 下的 `Head` 骨传给 `AngelJumpScare.Play`：脸 = Head 骨沿颈→头再伸 0.9 倍颈头距离，整尊平移让脸落在镜头前 0.55 m，镜头直接对准脸、每帧跟着动画修正，FOV 50。天使不传骨骼，行为不变。
+- 文本收集编号：`TextCatalog`（在 `TextDocument.cs`）按 T 编号排 19 份，阅读器左上角显示「No. n / 19」，暂停菜单 Texts 页标题显示已读数 / 19，列表按编号排并带两位编号。新增文本要补进 `TextCatalog.Order`。
+- 备份：`Docs/Backup/2026-11-01_before_fix7/`。
+- （同日更正）名画人物 jump scare 改走 `AngelJumpScare.PlayFace`：按眼白/瞳孔子网格顶点找眼睛和脸朝向，把整尊转成正脸对镜头；演出期间相机只渲染第 31 层（纯黑背景，等于一段固定 CG）；近裁剪面推到鼻尖前，切掉垂在脸前的头发。为此 `Girl.fbx` 导入设置打开了 Read/Write（`isReadable: 1`）。

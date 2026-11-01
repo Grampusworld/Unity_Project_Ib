@@ -15,6 +15,12 @@ namespace Ib.Environment
     {
         public static bool On { get; private set; } = true;
 
+        /// <summary>
+        /// 二楼楼梯口（正对楼梯出口）那盏接触不良的灯：断电后照样闪，灯罩也不熄。
+        /// 一楼楼梯厅那盏断电后跟全馆一起灭、不再闪（老大 2026-11-01 改）。
+        /// </summary>
+        public const string StillFlickering = "StairHall_2F_1";
+
         /// <summary>开关灯之后通知（参数 = 现在是否亮着）。水晶灯用它来熄灭灯泡、开始摇晃。</summary>
         public static event Action<bool> Changed;
 
@@ -26,9 +32,10 @@ namespace Ib.Environment
             Light[] lights = Object.FindObjectsByType<Light>(FindObjectsInactive.Include);
             foreach (Light light in lights)
             {
-                // 主角手电和厕所里那盏（停电后才亮）都不跟全馆灯一起关
+                // 主角手电、厕所里那盏（停电后才亮）、二楼楼梯口闪烁灯都不跟全馆灯一起关
                 if (light.GetComponentInParent<PlayerFlashlight>(true) != null
-                    || light.GetComponentInParent<FlashlightPickup>(true) != null)
+                    || light.GetComponentInParent<FlashlightPickup>(true) != null
+                    || light.name.EndsWith(StillFlickering))
                 {
                     continue;
                 }

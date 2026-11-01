@@ -29,9 +29,27 @@ namespace Ib.Player
         public bool IsDraining { get; private set; }
 
         /// <summary>耗尽后会卡在 false，直到体力回到 resumeThreshold 以上。</summary>
-        public bool CanSprint => !exhausted;
+        public bool CanSprint => !exhausted || infinite;
+
+        /// <summary>无限体力（调试菜单用）：不消耗、不回退，体力条恒满。</summary>
+        public bool Infinite
+        {
+            get => infinite;
+            set
+            {
+                infinite = value;
+                if (value)
+                {
+                    Current = maxStamina;
+                    exhausted = false;
+                    IsDraining = false;
+                    recoverTimer = 0f;
+                }
+            }
+        }
 
         private bool exhausted;
+        private bool infinite;
         private float recoverTimer;
 
         private void Awake()
@@ -42,6 +60,15 @@ namespace Ib.Player
         /// <summary>FirstPersonController 每帧调用一次，传入"本帧实际是否在冲刺"。</summary>
         public void SetSprinting(bool sprinting)
         {
+            if (infinite)
+            {
+                Current = maxStamina;
+                exhausted = false;
+                IsDraining = false;
+                recoverTimer = 0f;
+                return;
+            }
+
             float dt = Time.deltaTime;
             IsDraining = sprinting && Current > 0f;
 

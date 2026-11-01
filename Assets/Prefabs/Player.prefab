@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 350251680976404097}
   - component: {fileID: 6727789950282753712}
   - component: {fileID: 1797443424369264684}
-  - component: {fileID: 1424695936237993331}
+  - component: {fileID: 3153491918009746123}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -139,7 +139,7 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
---- !u!114 &1424695936237993331
+--- !u!114 &3153491918009746123
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -158,6 +158,9 @@ MonoBehaviour:
   range: 26
   spotAngle: 52
   localOffset: {x: 0.18, y: -0.15, z: 0.1}
+  viewmodelPrefab: {fileID: 2715696711649833740, guid: 3ae24fbe88191473090aeda1e22878c6, type: 3}
+  lensOnMaterial: {fileID: 2100000, guid: 1aaed91506ed24083af32546a912aca0, type: 2}
+  lensOffMaterial: {fileID: 2100000, guid: afa39c10728b6464499c89b185050cd1, type: 2}
   flickerInterval: 0.4
   flickerJitter: 0.08
   occluders:
@@ -208,7 +211,6 @@ GameObject:
   - component: {fileID: 4302336633679661904}
   - component: {fileID: 9161139498771652915}
   - component: {fileID: 170191667720427970}
-  - component: {fileID: 2628018906321108503}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -282,6 +284,7 @@ MonoBehaviour:
   eyeOffset: -0.14999998
   crouchLerpSpeed: 10
   cameraRoot: {fileID: 5679525389022172911}
+  stamina: {fileID: 0}
   headBobEnabled: 1
   bobFrequency: 9
   bobVertical: 0.035
@@ -289,6 +292,7 @@ MonoBehaviour:
   stepDistance: 2.1
   flySpeed: 6
   flyBoostMultiplier: 3
+  stepSmoothingSpeed: 12
 --- !u!114 &9161139498771652915
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -326,33 +330,6 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   highlightWidth: 0.03
---- !u!114 &2628018906321108503
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3535259948168346018}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 08b3a3673f49c4a24a5103a54a92fc48, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Ib.Core.NoclipXRay
-  museum:
-    m_Center: {x: 28, y: 7.9799995, z: 18.199999}
-    m_Extent: {x: 28, y: 7.9799995, z: 18.199999}
-  blackRoom:
-    m_Center: {x: 27.3, y: 3.1499999, z: -11.2}
-    m_Extent: {x: 7, y: 3.1499999, z: 11.2}
-  backgroundColor: {r: 0.03, g: 0.045, b: 0.065, a: 1}
-  buriedProbeRadius: 0.06
-  wireAlpha: 0.85
-  farClipWhenActive: 400
-  drawFloorGrid: 1
-  gridStep: 2
-  gridHeights:
-  - 0.02
-  - 8.9800005
 --- !u!1 &6863832974964451463
 GameObject:
   m_ObjectHideFlags: 0

@@ -64,9 +64,17 @@ namespace Ib.UI
 
             fill.anchorMax = new Vector2(Mathf.Clamp01(stamina.Ratio), 1f);
 
-            bool show = GameFlow.IsAiming && (stamina.IsDraining || stamina.Ratio < 0.999f);
+            // 暂停、读纸面、确认窗、结局、Game Over：立刻藏起来。
+            // 暂停时 timeScale = 0，按 deltaTime 淡出永远走不动，所以这里不淡出、直接清零。
+            if (!GameFlow.IsAiming)
+            {
+                group.alpha = 0f;
+                return;
+            }
+
+            bool show = (stamina.IsDraining || stamina.Ratio < 0.999f);
             float target = show ? 1f : 0f;
-            group.alpha = Mathf.MoveTowards(group.alpha, target, FadeSpeed * Time.deltaTime);
+            group.alpha = Mathf.MoveTowards(group.alpha, target, FadeSpeed * Time.unscaledDeltaTime);
         }
     }
 }

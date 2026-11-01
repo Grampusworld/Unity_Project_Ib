@@ -111,7 +111,8 @@ namespace Ib.Core
 
             // 每帧平滑，传送 / 状态切换时不跳变
             volume += (target - volume) * (1f - Mathf.Exp(-SmoothSpeed * Time.deltaTime));
-            source.volume = volume * AudioMix.Music;
+            // 被追击时压低约 5 dB，让心跳出来（ChaseHeartbeat.Level 自己带淡入淡出，这里不会跳变）
+            source.volume = volume * AudioMix.Music * (1f - 0.45f * ChaseHeartbeat.Level);
 
             if (!source.isPlaying && volume > 0.01f)
             {

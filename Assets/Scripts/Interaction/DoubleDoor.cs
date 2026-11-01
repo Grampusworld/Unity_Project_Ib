@@ -34,6 +34,8 @@ namespace Ib.Interaction
         public bool IsOpen => state == State.Open;
         public bool IsClosed => state == State.Closed;
         public bool IsLocked => locked;
+        public Transform LeftHinge => leftHinge;
+        public Transform RightHinge => rightHinge;
 
         public string Prompt => prompt;
 
@@ -58,6 +60,13 @@ namespace Ib.Interaction
             state = State.Opening;
             progress = 0f;
             OpeningStarted?.Invoke();
+        }
+
+        /// <summary>结局 CG 用：无视门锁，从关着的状态缓缓打开（照常发 OpeningStarted / Opened）。</summary>
+        public void ForceOpen()
+        {
+            locked = false;
+            Open();
         }
 
         /// <summary>瞬间关上。只在玩家看不见门的时候调用，没有关门动画。</summary>

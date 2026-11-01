@@ -56,7 +56,8 @@ namespace Ib.Environment
 
         private void Update()
         {
-            if (IsSealed || door == null)
+            // 结局 CG 会重新打开这扇门，不能再按序章逻辑关门
+            if (IsSealed || door == null || GameFlow.State == GameState.Ending)
             {
                 return;
             }
@@ -110,6 +111,12 @@ namespace Ib.Environment
 
         private void OnDoorOpening()
         {
+            // 结局 CG 开门：停电后不再来电
+            if (IsSealed || GameFlow.State == GameState.Ending)
+            {
+                return;
+            }
+
             SetMuseumLights(true);
 
             // 第 4 步：推门 = 进入画中馆（全家福只在 PaintedGallery 时能交互）

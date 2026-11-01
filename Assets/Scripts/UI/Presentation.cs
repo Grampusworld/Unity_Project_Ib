@@ -5,7 +5,7 @@ using UnityEngine.SceneManagement;
 
 namespace Ib.UI
 {
-    public enum HintId { Explore = 1, AnswerPhone = 2, GetOut = 3, FindKey = 4, GetStaffCard = 5, OpenDrawer = 6, GetFlash = 7 }
+    public enum HintId { Explore = 1, AnswerPhone = 2, GetOut = 3, FindKey = 4, GetStaffCard = 5, OpenDrawer = 6, InvestigateSecondFloor = 7, CheckMonitorRoom = 8 }
 
     /// <summary>
     /// UI 对外入口（接口见 Docs/Interfaces.md）。场景里不用摆任何东西：每次加载场景自动生成整套 UI。
@@ -24,6 +24,12 @@ namespace Ib.UI
         public static void ShowHint(HintId id)
         {
             if (Ready(nameof(ShowHint))) root.Hints.Show(id);
+        }
+
+        /// <summary>屏幕下半区 1/4 处的内心独白字幕：淡入、停 seconds 秒、淡出，结束后调 onDone。</summary>
+        public static void ShowCaption(string text, float seconds, Action onDone = null)
+        {
+            if (Ready(nameof(ShowCaption))) root.Caption.Show(text, seconds, onDone);
         }
 
         /// <summary>屏幕中央展开纸面。textId："T1"…"T16"、"T6_1"…"T6_4"。关闭时调 onClosed。</summary>

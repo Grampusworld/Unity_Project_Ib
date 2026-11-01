@@ -3,6 +3,7 @@ using UnityEditor;
 using UnityEditor.Animations;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.AI;
 
 namespace Ib.EditorTools
 {
@@ -61,6 +62,13 @@ namespace Ib.EditorTools
                 cap.center = Vector3.zero;
                 cap.height = FigureHeight;
                 cap.radius = FigureRadius;
+
+                // 预先挂一个禁用的 NavMeshAgent：PaintingFigure.Awake 里没有时会 AddComponent，
+                // 而运行中添加的 Agent 默认是启用的，会在第一帧把站在画框里（离导航网格有距离）的人物
+                // 吸到最近的导航网格上（实测会掉到一楼/楼外）。场景里先放一个禁用的，Awake 就只改参数不重建。
+                NavMeshAgent preAgent = go.GetComponent<NavMeshAgent>();
+                if (preAgent == null) preAgent = go.AddComponent<NavMeshAgent>();
+                preAgent.enabled = false;
 
                 Transform old = go.transform.Find("Visual_Girl");
                 if (old != null) Object.DestroyImmediate(old.gameObject);

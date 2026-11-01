@@ -4,6 +4,8 @@ namespace Ib.Environment
 {
     /// <summary>
     /// 灯泡闪烁。挂在带 Light 的物体上即可，不改动其他逻辑。
+    /// 断电后（MuseumLights.On == false）闪得更勤、每阵更长，间隔仍然随机（老大 2026-11-01）。
+    /// 灯自己强制开阴影：这种灯挂在楼梯厅，不开阴影光会穿过楼板照到楼上。
     /// 纯氛围件，删掉不影响任何功能。
     /// </summary>
     [RequireComponent(typeof(Light))]
@@ -17,6 +19,12 @@ namespace Ib.Environment
         [SerializeField, Min(1)] private int flickerStepsMin = 3;
         [SerializeField, Min(1)] private int flickerStepsMax = 8;
 
+        [Header("断电后")]
+        [SerializeField, Min(0f)] private float darkSteadyMin = 0.3f;
+        [SerializeField, Min(0f)] private float darkSteadyMax = 2.2f;
+        [SerializeField, Min(1)] private int darkStepsMin = 4;
+        [SerializeField, Min(1)] private int darkStepsMax = 14;
+
         private Light target;
         private float baseIntensity;
         private float steadyTimer;
@@ -27,6 +35,13 @@ namespace Ib.Environment
         {
             target = GetComponent<Light>();
             baseIntensity = target.intensity;
+            if (target.shadows == LightShadows.None)
+            {
+                target.shadows = LightShadows.Soft;
+                target.shadowStrength = 0.9f;
+                target.shadowBias = 0.05f;
+                target.shadowNormalBias = 0.4f;
+            }
             steadyTimer = Random.Range(steadyMin, steadyMax);
         }
 
@@ -50,11 +65,18 @@ namespace Ib.Environment
                 return;
             }
 
+            // 刚断电：别等完亮灯时那段长间隔
+            if (!MuseumLights.On && steadyTimer > darkSteadyMax)
+            {
+                steadyTimer = Random.Range(darkSteadyMin, darkSteadyMax);
+            }
+
             steadyTimer -= Time.deltaTime;
             if (steadyTimer <= 0f)
             {
-                steadyTimer = Random.Range(steadyMin, steadyMax);
-                stepsLeft = Random.Range(flickerStepsMin, flickerStepsMax + 1);
+                bool dark = !MuseumLights.On;
+                steadyTimer = dark ? Random.Range(darkSteadyMin, darkSteadyMax) : Random.Range(steadyMin, steadyMax);
+                stepsLeft = dark ? Random.Range(darkStepsMin, darkStepsMax + 1) : Random.Range(flickerStepsMin, flickerStepsMax + 1);
                 stepTimer = 0f;
             }
         }

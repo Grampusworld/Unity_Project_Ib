@@ -331,6 +331,13 @@ namespace Ib.EditorTools
                     so.FindProperty("intensity").floatValue = 55f;
                     so.FindProperty("range").floatValue = 26f;
                     so.FindProperty("spotAngle").floatValue = 52f;
+                    // 第一人称手电模型（Ib 美术 Flashlight_Viewmodel，Docs/Chase_Audio_Viewmodel.md）
+                    so.FindProperty("viewmodelPrefab").objectReferenceValue =
+                        AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Models/Props/Flashlight_Viewmodel.prefab");
+                    so.FindProperty("lensOnMaterial").objectReferenceValue =
+                        AssetDatabase.LoadAssetAtPath<Material>("Assets/Art/Materials/Props/M_FL_Lens_On.mat");
+                    so.FindProperty("lensOffMaterial").objectReferenceValue =
+                        AssetDatabase.LoadAssetAtPath<Material>("Assets/Art/Materials/Props/M_FL_Lens_Off.mat");
                     so.ApplyModifiedPropertiesWithoutUndo();
                     PrefabUtility.SaveAsPrefabAsset(contents, PlayerPrefabPath);
                 }

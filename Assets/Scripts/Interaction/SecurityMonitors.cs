@@ -41,6 +41,7 @@ namespace Ib.Interaction
         private float nextRefresh;
         private int cursor;
         private bool centreEveryFrame;
+        private AudioSource hiss;      // 雪花底噪：过场第一帧起就跟着画面响（老大 2026-11-01）
 
         /// <summary>过场进行中（MonitorTerminal 用它挡住重复触发）。</summary>
         public bool Playing { get; private set; }
@@ -110,6 +111,14 @@ namespace Ib.Interaction
             ThreatSchedule.Paused = true;   // 强制过场里不能被抓
             GameFlow.SetInputLocked(true);
 
+            // 音画同步（老大 2026-11-01）：过场第一帧就起雪花底噪，音量/音高跟着 _Static 走，
+            // 不再是「动画静音、结尾才响一声石头声」。
+            StartHiss();
+            if (screens.Length > 0)
+            {
+                Sfx.PlayAt(Sfx.KeyClick, screens[0].bounds.center, 0.35f, 8f);   // 按下监控的开关声
+            }
+
             Vector3 localPos = cam != null ? cam.localPosition : Vector3.zero;
             Quaternion localRot = cam != null ? cam.localRotation : Quaternion.identity;
             Vector3 fromPos = cam != null ? cam.position : Vector3.zero;
@@ -132,6 +141,11 @@ namespace Ib.Interaction
             }
 
             SetStatic(1f, 0.35f);
+            if (screens.Length > 0)
+            {
+                Sfx.PlayAt(Sfx.PowerClunk, screens[0].bounds.center, 0.4f, 10f);   // 满屏雪花那一下的闷响
+            }
+
             yield return new WaitForSeconds(fullStaticHold * 0.5f);
 
             // 满屏雪花的这一瞬，摄像头的注视断了：天使出动。
@@ -172,6 +186,66 @@ namespace Ib.Interaction
             ThreatSchedule.Paused = false;
             GameFlow.SetInputLocked(false);
             Playing = false;
+
+            // 雪花退干净以后底噪跟着淡出，不要一刀切
+            StartCoroutine(FadeHiss(0.5f));
+        }
+
+        /// <summary>过场第一帧起循环播雪花底噪（素材缺失时静音，不报错）。</summary>
+        private void StartHiss()
+        {
+            if (hiss != null)
+            {
+                hiss.Stop();
+                Destroy(hiss);
+                hiss = null;
+            }
+
+            AudioClip clip = Sfx.Load(Sfx.MonitorStatic);
+            if (clip == null)
+            {
+                return;
+            }
+
+            hiss = gameObject.AddComponent<AudioSource>();
+            hiss.clip = clip;
+            hiss.loop = true;
+            hiss.playOnAwake = false;
+            hiss.spatialBlend = 0.65f;   // 从屏幕那儿来，但别被距离衰减吃没
+            hiss.rolloffMode = AudioRolloffMode.Linear;
+            hiss.minDistance = 2f;
+            hiss.maxDistance = 14f;
+            hiss.dopplerLevel = 0f;
+            hiss.volume = 0f;
+            hiss.pitch = 0.9f;
+            hiss.Play();
+        }
+
+        private System.Collections.IEnumerator FadeHiss(float seconds)
+        {
+            if (hiss == null)
+            {
+                yield break;
+            }
+
+            float from = hiss.volume;
+            for (float t = 0f; t < seconds; t += Time.unscaledDeltaTime)
+            {
+                if (hiss == null)
+                {
+                    yield break;
+                }
+
+                hiss.volume = Mathf.Lerp(from, 0f, t / seconds);
+                yield return null;
+            }
+
+            if (hiss != null)
+            {
+                hiss.Stop();
+                Destroy(hiss);
+                hiss = null;
+            }
         }
 
         private void SetStatic(float centre, float others)
@@ -179,6 +253,13 @@ namespace Ib.Interaction
             for (int i = 0; i < materials.Length; i++)
             {
                 materials[i].SetFloat(StaticId, i == 0 ? centre : others);
+            }
+
+            if (hiss != null)
+            {
+                // 雪花越密，底噪越响、音高越高：耳听和画面是同一根曲线
+                hiss.volume = Mathf.Clamp01(0.05f + 0.45f * centre) * AudioMix.Effects;
+                hiss.pitch = 0.9f + 0.22f * centre;
             }
         }
     }

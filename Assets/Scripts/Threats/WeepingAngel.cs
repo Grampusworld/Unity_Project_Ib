@@ -369,7 +369,7 @@ namespace Ib.Threats
 
                 Vector3 flat = player.transform.position - transform.position;
                 flat.y = 0f;
-                if (flat.magnitude < catchDistance)
+                if (flat.magnitude < catchDistance && !ThreatSchedule.NoCatch)
                 {
                     CatchPlayer();
                 }

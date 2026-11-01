@@ -237,6 +237,10 @@ namespace Ib.EditorTools
             // 踢脚线 / 护墙板 / 墙裙 / 挂镜线 / 檐口 / 壁柱 / 门套 / 梁 / 柱 / 地面拼花（GrayboxBuilder.Detail.cs）
             BuildArchitectureDetail(museum, p);
 
+            // 厅名门牌 + 配电室门/室内（GrayboxBuilder.Wayfinding.cs）：要放在门套之后，牌子才不会被门套压住
+            BuildWayfindingSigns(props);
+            BuildPowerRoomDoor(props, p);
+
             // 画中馆人群站位（白色圆柱，GrayboxBuilder.Crowd.cs）：要等墙、道具、展品都放好，按碰撞找空位
             BuildCrowd(exhibits, museum);
             // 文本收集物 T1–T16（GDD §6.11.2）：放在人群之后，新加的碰撞体不会挤动已有的人群站位
@@ -272,6 +276,11 @@ namespace Ib.EditorTools
             SetupSecondHalf();
             // 游客模型、导言墙、厕所镜子 + Ted、值班室监控（GrayboxBuilder.Exhibition.cs，会再存一次场景）
             SetupExhibition();
+            // Lily 肖像的眼睛分层 + 坏结局的库房 07（GrayboxBuilder.EndingArt.cs，会再存一次场景）
+            SetupEndingArt();
+            // 二楼名画人物：换 Girl 模型 + 布置破框站点（以前是重建后手动跑两个菜单，2026-11-01 漏跑导致两只退回灰盒胶囊）
+            PaintingFigureSetup.Setup();
+            PaintingFigureBreakoutSetup.Setup();
 
             Debug.Log("[GrayboxBuilder] 完成：" + ScenePath);
         }
@@ -1175,22 +1184,11 @@ namespace Ib.EditorTools
             FirstPersonController controller = root.AddComponent<FirstPersonController>();
             PlayerLook look = root.AddComponent<PlayerLook>();
             PlayerInteractor interactor = root.AddComponent<PlayerInteractor>();
-            NoclipXRay xray = root.AddComponent<NoclipXRay>();
 
             SetRef(controller, "cameraRoot", cameraRoot.transform);
             SetRef(look, "cameraTransform", cameraGO.transform);
             SetRef(interactor, "cameraTransform", cameraGO.transform);
             SetFloat(interactor, "reach", 2.5f);   // 东西都变大了，手够得着的距离放宽一点
-
-            // 穿透视图判定"馆内 / 黑屋"的包围盒跟着整体放大
-            SerializedObject xs = new SerializedObject(xray);
-            xs.FindProperty("museum").boundsValue = new Bounds(new Vector3(20f, 5.7f, 13f) * WorldScale, new Vector3(40f, 11.4f, 26f) * WorldScale);
-            xs.FindProperty("blackRoom").boundsValue = new Bounds(new Vector3(19.5f, 2.25f, -8f) * WorldScale, new Vector3(10f, 4.5f, 16f) * WorldScale);
-            SerializedProperty grid = xs.FindProperty("gridHeights");
-            grid.arraySize = 2;
-            grid.GetArrayElementAtIndex(0).floatValue = 0.02f;
-            grid.GetArrayElementAtIndex(1).floatValue = Floor2Y * WorldScale + 0.02f;
-            xs.ApplyModifiedPropertiesWithoutUndo();
 
             // 7 岁身高：眼睛 = standHeight + eyeOffset
             SetFloat(controller, "standHeight", PlayerHeight);
@@ -1278,7 +1276,7 @@ namespace Ib.EditorTools
                 {
                     Vector3 pos = new Vector3(x0 + (i + 0.5f) * dx, y, z0 + (j + 0.5f) * dz);
                     AddPointLight(group, "Light_" + room + "_" + index, pos, color,
-                        RoomLightIntensity, RoomLightRange, index == flickerIndex, shadows);
+                        RoomLightIntensity, RoomLightRange, index == flickerIndex, shadows || index == flickerIndex);   // 闪烁灯在楼梯厅，不开阴影会透到楼上
                     AddLampFixture(room + "_" + index, pos, color);
                     index++;
                 }

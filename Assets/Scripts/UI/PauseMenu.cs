@@ -16,6 +16,7 @@ namespace Ib.UI
         private GameObject textsPage;
         private RectTransform textsList;
         private Text docTitle;
+        private Text textsHeading;
         private Text docBody;
         private ScrollRect docScroll;
         private Button selectedEntry;
@@ -79,6 +80,7 @@ namespace Ib.UI
         {
             textsPage = UIFactory.Empty(view.transform, "Texts");
             Text heading = UIFactory.Label(textsPage.transform, "Title", "Texts", 40, TextAnchor.MiddleCenter, Color.white);
+            textsHeading = heading;
             Place(heading.rectTransform, new Vector2(0f, 0.9f), new Vector2(1f, 0.97f));
 
             // 左 1/4：已收集列表（可滚动）
@@ -162,6 +164,7 @@ namespace Ib.UI
             UIFactory.Clear(textsList);
             selectedEntry = null;
             ShowDocument(null);
+            textsHeading.text = $"Texts  {Presentation.ReadTexts.Count} / {TextCatalog.Count}";
 
             if (Presentation.ReadTexts.Count == 0)
             {
@@ -171,10 +174,19 @@ namespace Ib.UI
             }
 
             Button first = null;
-            foreach (string id in Presentation.ReadTexts)
+            // 按收集编号排（不在编号表里的排最后），每条前面带编号
+            var ids = new System.Collections.Generic.List<string>(Presentation.ReadTexts);
+            ids.Sort((a, b) => SortKey(a).CompareTo(SortKey(b)));
+            foreach (string id in ids)
             {
                 var doc = Resources.Load<TextDocument>("Texts/" + id);
                 string label = doc != null && !string.IsNullOrEmpty(doc.title) ? doc.title : id;
+                int n = TextCatalog.Number(id);
+                if (n > 0)
+                {
+                    label = $"{n:00}  {label}";
+                }
+
                 Button b = null;
                 b = UIFactory.Button(textsList, label, () => Select(b, doc), 22);
                 ((RectTransform)b.transform).sizeDelta = new Vector2(300f, 40f);
@@ -187,6 +199,12 @@ namespace Ib.UI
                     Select(b, doc);
                 }
             }
+        }
+
+        private static int SortKey(string id)
+        {
+            int n = TextCatalog.Number(id);
+            return n > 0 ? n : int.MaxValue;
         }
 
         private void Select(Button entry, TextDocument doc)

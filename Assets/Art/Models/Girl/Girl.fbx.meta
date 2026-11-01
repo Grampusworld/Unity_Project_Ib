@@ -3,7 +3,42 @@ guid: 58a23e6229c5b44329b041e8bfa82177
 ModelImporter:
   serializedVersion: 24501
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_Girl_Frame
+    second: {fileID: 2100000, guid: 7d62d7a04329447e82f265ca2fbcd6ef, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_Girl_Void
+    second: {fileID: 2100000, guid: 754933c235b84c7b8ae03049999a13b9, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_Girl_Skin
+    second: {fileID: 2100000, guid: 5ca7ca86ef9946ad887956e81eaa0360, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_Girl_Hair
+    second: {fileID: 2100000, guid: 748dfce43510468789f0b1416810c6bd, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_Girl_Dress
+    second: {fileID: 2100000, guid: 0bbb9dab26064d5fbe07d14d4530be33, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_Girl_EyeWhite
+    second: {fileID: 2100000, guid: 39dcfb73b1304147b138fbb4f8de7511, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_Girl_Iris
+    second: {fileID: 2100000, guid: 97ceef53401d43348dc5e2d1b0ebd861, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
@@ -60,7 +95,7 @@ ModelImporter:
       maskType: 3
       maskSource: {instanceID: 0}
       additiveReferencePoseFrame: 0
-    isReadable: 0
+    isReadable: 1
   meshes:
     lODScreenPercentages: []
     globalScale: 1

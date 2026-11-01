@@ -1,5 +1,7 @@
+using Ib.Core;
 using Ib.Environment;
 using Ib.Interaction;
+using Ib.Threats;
 using Ib.UI;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -58,7 +60,7 @@ namespace Ib.Flow
         {
             GameFlow.SetState(GameState.PowerOut);
             Checkpoints.Reach(Checkpoints.PowerOut);
-            GameFlow.ShowHintOnce(HintId.GetFlash);
+            // 停电后不再提示 "Get the Flash"：接完电话已经提示 Investigate Second Floor
         }
 
         /// <summary>第 12 步：拿起手电，状态仍是 PowerOut。人台和名画人物由 Threats 按 HasFlashlight 出动，天使不动。</summary>
@@ -70,7 +72,7 @@ namespace Ib.Flow
                 return; // 玩家身上没有手电组件
             }
 
-            GameFlow.ShowHintOnce(HintId.GetOut);
+            GameFlow.ShowHintOnce(HintId.CheckMonitorRoom);
             Checkpoints.Reach(Checkpoints.Flashlight);
         }
 
@@ -79,6 +81,7 @@ namespace Ib.Flow
         {
             GameFlow.SetState(GameState.AngelsActive);
             Checkpoints.Reach(Checkpoints.AngelsActive);
+            GameFlow.ShowHintOnce(HintId.GetOut); // 拿手电时改成提示去值班室，看完监控再提示逃出去
         }
 
         /// <summary>第 8 步：电话开始响（PhoneRing 在出画几秒后调用）。</summary>
@@ -99,6 +102,9 @@ namespace Ib.Flow
         {
             Busy = false;
             GameFlow.SetInputLocked(false);
+
+            // 接完电话：0.7 s 后二楼厕所异响，播完把提示换成 "Investigate Second Floor"
+            AmbientAudio.PhoneCallFinished();
         }
 
         /// <summary>第 13 步：推了锁着的正门。「找到打开主门的钥匙」只在拿到手电（逃离开始）以后给（§3.7 顺序固定）。</summary>
@@ -134,10 +140,26 @@ namespace Ib.Flow
                 () => GameFlow.SetInputLocked(false));
         }
 
-        /// <summary>第 18 步 · 坏结局：确认开门。</summary>
+        /// <summary>
+        /// 第 18 步 · 坏结局：确认开门。先放 CG（BadEndingCutscene：门缓缓打开 → 推进库房 07 → 转身见天使 → 重击硬切黑），
+        /// 黑屏后接同一张结局字幕。场景里缺门 / 库房时退回原来的渐黑。
+        /// </summary>
         public static void BadEnding()
         {
-            Ending(FadeSeconds * 3f, "Temporary Storage 07", new[]
+            if (!BeginEnding())
+            {
+                return;
+            }
+
+            if (!BadEndingCutscene.Play(ShowBadEndingCard))
+            {
+                Presentation.FadeToBlack(FadeSeconds * 3f, ShowBadEndingCard);
+            }
+        }
+
+        private static void ShowBadEndingCard()
+        {
+            ShowEndingCard("Temporary Storage 07", new[]
             {
                 "Behind the door there is no street. Only crates, stacked to the ceiling.",
                 "The number on the door matches the number on the key.",
@@ -163,18 +185,34 @@ namespace Ib.Flow
 
         private static void Ending(float fadeOutSeconds, string title, string[] lines)
         {
-            if (Busy)
+            if (!BeginEnding())
             {
                 return;
             }
 
-            // 先切到 Ending：馆藏全部停下，渐黑途中不会被抓
+            Presentation.FadeToBlack(fadeOutSeconds, () => ShowEndingCard(title, lines));
+        }
+
+        /// <summary>先切到 Ending：馆藏全部停下，渐黑 / CG 途中不会被抓。</summary>
+        private static bool BeginEnding()
+        {
+            if (Busy)
+            {
+                return false;
+            }
+
             Busy = true;
+            ThreatSchedule.Paused = true;   // 名画人物 / 人台不看 Ending 状态，靠这个停住、不再抓人
             GameFlow.SetInputLocked(true);
             GameFlow.SetState(GameState.Ending);
-            Presentation.FadeToBlack(fadeOutSeconds, () =>
-                Presentation.ShowEnding(title, lines, () =>
-                    SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex)));
+            return true;
+        }
+
+        /// <summary>黑屏已经到位以后：结局字幕，完了重新加载场景回主菜单。</summary>
+        private static void ShowEndingCard(string title, string[] lines)
+        {
+            Presentation.ShowEnding(title, lines, () =>
+                SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex));
         }
 
         internal static void Reset() => Busy = false;

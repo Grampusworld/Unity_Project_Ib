@@ -16,6 +16,7 @@ namespace Ib.UI
         public const float UIScale = 1.3f;
 
         public HintBar Hints { get; private set; }
+        public CaptionBar Caption { get; private set; }
         public TextReader Reader { get; private set; }
         public ScreenFader Fader { get; private set; }
         public MainMenu Menu { get; private set; }
@@ -46,6 +47,7 @@ namespace Ib.UI
         private void Awake()
         {
             Hints = HintBar.Create(transform);
+            Caption = CaptionBar.Create(transform);
             ControlHints.Create(transform);
             InteractPrompt.Create(transform);
             Menu = MainMenu.Create(transform, this);

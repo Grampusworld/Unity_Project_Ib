@@ -9,7 +9,7 @@ namespace Ib.Core
     /// <summary>
     /// 调试菜单：F1 开关，只在编辑器 / Development Build 里生效（正式包里按 F1 没反应）。
     /// 打开时释放光标、屏蔽玩家移动输入；关闭时把光标锁回去、恢复移动。
-    /// 内容：自由飞行（穿墙 / 无重力）、哭泣天使阶段切换、全馆灯光开关、给主角手电筒。
+    /// 内容：自由飞行（穿墙 / 无重力）、无限体力、3 倍移动速度、哭泣天使阶段切换、全馆灯光开关、给主角手电筒。
     /// 提示：UI 用 OnGUI 顶着，和 PlayerInteractor 的交互提示同一套临时方案。
     /// </summary>
     [DisallowMultipleComponent]
@@ -22,6 +22,9 @@ namespace Ib.Core
         public bool IsOpen { get; private set; }
 
         private InputAction toggleAction;
+        private PlayerStamina stamina;
+        private bool infiniteStamina;
+        private bool tripleSpeed;
         private float uiScale = 1f;
         private Texture2D panelTexture;
 
@@ -67,6 +70,31 @@ namespace Ib.Core
         }
 #endif
 
+        /// <summary>无限体力开关。体力条会一直满，冲刺不再消耗。</summary>
+        public void SetInfiniteStamina(bool on)
+        {
+            infiniteStamina = on;
+            if (stamina == null && player != null)
+            {
+                stamina = player.GetComponent<PlayerStamina>();
+            }
+
+            if (stamina != null)
+            {
+                stamina.Infinite = on;
+            }
+        }
+
+        /// <summary>3 倍移动速度开关（走 / 跑 / 蹲都乘 3）。</summary>
+        public void SetTripleSpeed(bool on)
+        {
+            tripleSpeed = on;
+            if (player != null)
+            {
+                player.SpeedMultiplier = on ? 3f : 1f;
+            }
+        }
+
         public void Toggle()
         {
             if (IsOpen)
@@ -97,6 +125,15 @@ namespace Ib.Core
             {
                 player.InputBlocked = true;
             }
+
+            if (stamina == null && player != null)
+            {
+                stamina = player.GetComponent<PlayerStamina>();
+            }
+
+            // 每次打开都对一遍真实状态，避免别处改过之后勾选框显示错误
+            infiniteStamina = stamina != null && stamina.Infinite;
+            tripleSpeed = player != null && Mathf.Approximately(player.SpeedMultiplier, 3f);
 
             PlayerLook.SuspendPointerCapture = true;
             PlayerLook.LockCursor(false);
@@ -137,7 +174,7 @@ namespace Ib.Core
             EnsureStyles();
 
             float s = uiScale;
-            Rect panel = new Rect(24f * s, 24f * s, 470f * s, 520f * s);
+            Rect panel = new Rect(24f * s, 24f * s, 470f * s, 610f * s);
             GUI.DrawTexture(panel, panelTexture, ScaleMode.StretchToFill);
 
             GUILayout.BeginArea(new Rect(panel.x + 18f * s, panel.y + 14f * s, panel.width - 36f * s, panel.height - 24f * s));
@@ -175,6 +212,20 @@ namespace Ib.Core
                     ? "WASD 平移 · 空格上升 · Ctrl 下降 · Shift 加速"
                     : "打开后可用 WASD / 空格 / Ctrl / Shift 自由移动",
                 hintStyle);
+
+            GUILayout.Space(10f);
+
+            bool infinite = GUILayout.Toggle(infiniteStamina, "  无限体力", toggleStyle);
+            if (infinite != infiniteStamina)
+            {
+                SetInfiniteStamina(infinite);
+            }
+
+            bool triple = GUILayout.Toggle(tripleSpeed, "  3 倍移动速度", toggleStyle);
+            if (triple != tripleSpeed)
+            {
+                SetTripleSpeed(triple);
+            }
 
             GUILayout.Space(10f);
             GUILayout.Label("检查点传送：数字键 1–9（1 = CP0 黑屋起点）", hintStyle);

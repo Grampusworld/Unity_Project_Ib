@@ -119,3 +119,7 @@ InitTestScene*.unity*
 
 # 场景整份备份太大（每份约 18MB），只留本地，git 历史里已有
 Docs/Backup/**/Graybox.unity.txt
+
+# 场景备份（每份 12–18 MB，只留在本机）和 Python 缓存
+Docs/Backup/
+__pycache__/

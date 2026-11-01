@@ -83,6 +83,14 @@ namespace Ib.Player
         /// <summary>菜单打开时置 true：丢弃移动 / 跳跃 / 蹲伏输入，但保留重力与相机，人物原地站住。</summary>
         public bool InputBlocked { get; set; }
 
+        /// <summary>地面移动速度倍率（调试菜单用，正常游戏恒为 1）。</summary>
+        public float SpeedMultiplier
+        {
+            get => speedMultiplier;
+            set => speedMultiplier = Mathf.Max(0.1f, value);
+        }
+
+        private float speedMultiplier = 1f;
         private CharacterController controller;
         private Transform eye;
         private InputAction moveAction;
@@ -251,17 +259,18 @@ namespace Ib.Player
 
         private float ResolveSpeed()
         {
-            bool wantsSprint = !InputBlocked && sprintAction.IsPressed() && !IsCrouching && moveAction.ReadValue<Vector2>().y > 0.1f;
+            // 前进或后退（W / S）按住 Shift 都能跑（老大 2026-11-01）；纯横移不算冲刺
+            bool wantsSprint = !InputBlocked && sprintAction.IsPressed() && !IsCrouching && Mathf.Abs(moveAction.ReadValue<Vector2>().y) > 0.1f;
             bool sprinting = wantsSprint && (stamina == null || stamina.CanSprint);
             IsSprinting = sprinting;
             stamina?.SetSprinting(sprinting);
 
             if (IsCrouching)
             {
-                return crouchSpeed;
+                return crouchSpeed * speedMultiplier;
             }
 
-            return sprinting ? sprintSpeed : walkSpeed;
+            return (sprinting ? sprintSpeed : walkSpeed) * speedMultiplier;
         }
 
         private void ApplyVertical(float dt)

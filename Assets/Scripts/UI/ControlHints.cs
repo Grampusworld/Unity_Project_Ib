@@ -25,7 +25,8 @@ namespace Ib.UI
             go.transform.SetParent(parent, false);
             var rt = (RectTransform)go.transform;
             rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(1f, 0f);
-            rt.anchoredPosition = new Vector2(-32f, 32f);
+            // 抬高 90 px：给右下角的第一人称手电筒让位（Docs/Chase_Audio_Viewmodel.md 的建议），灯头不再压在键帽上
+            rt.anchoredPosition = new Vector2(-32f, 122f);
             rt.sizeDelta = new Vector2(260f, 3f * RowHeight + 16f);
 
             var layout = go.GetComponent<VerticalLayoutGroup>();

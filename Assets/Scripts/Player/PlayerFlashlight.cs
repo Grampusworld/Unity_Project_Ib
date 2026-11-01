@@ -23,6 +23,12 @@ namespace Ib.Player
         [SerializeField, Range(10f, 90f)] private float spotAngle = 52f;
         [SerializeField] private Vector3 localOffset = new Vector3(0.18f, -0.15f, 0.1f);
 
+        [Header("第一人称手电模型（右下角）")]
+        [Tooltip("Assets/Art/Models/Props/Flashlight_Viewmodel.prefab。为空时不显示模型，光照旧从相机旁发出。")]
+        [SerializeField] private GameObject viewmodelPrefab;
+        [SerializeField] private Material lensOnMaterial;
+        [SerializeField] private Material lensOffMaterial;
+
         [Header("追击时闪烁")]
         [SerializeField, Min(0.05f)] private float flickerInterval = 0.4f;
         [Tooltip("每拍时长随机 ±，免得节奏太机械。")]
@@ -47,6 +53,7 @@ namespace Ib.Player
         public float Range => range;
 
         private Light spot;
+        private FlashlightViewmodel viewmodel;
         private InputAction toggleAction;
         private bool flickerPhaseOn = true;
         private float nextFlickerTime;
@@ -71,6 +78,38 @@ namespace Ib.Player
 
             toggleAction = new InputAction("Flashlight", InputActionType.Button, "<Keyboard>/f");
             ApplyLight();
+
+            Camera cam = GetComponentInParent<Camera>();
+            if (viewmodelPrefab != null && cam != null)
+            {
+                GameObject vm = Instantiate(viewmodelPrefab, transform, false);
+                vm.name = "FlashlightViewmodel";
+                viewmodel = vm.AddComponent<FlashlightViewmodel>();
+                viewmodel.Setup(this, cam, lensOnMaterial, lensOffMaterial);
+            }
+        }
+
+        /// <summary>
+        /// 光的发出点跟着第一人称手电的灯头走（模型收起时回到相机旁的默认位置），方向始终对准准星前方。
+        /// LateUpdate：在相机和模型都动完之后摆。
+        /// </summary>
+        private void LateUpdate()
+        {
+            if (spot == null)
+            {
+                return;
+            }
+
+            if (viewmodel != null && viewmodel.TryGetLightOrigin(out Vector3 origin))
+            {
+                Vector3 aim = transform.position + transform.forward * 10f;
+                spot.transform.SetPositionAndRotation(origin, Quaternion.LookRotation(aim - origin, transform.up));
+            }
+            else
+            {
+                spot.transform.localPosition = localOffset;
+                spot.transform.localRotation = Quaternion.identity;
+            }
         }
 
         private void OnEnable() => toggleAction?.Enable();
@@ -105,6 +144,15 @@ namespace Ib.Player
                 flickerPhaseOn = true;
             }
 
+            ApplyLight();
+        }
+
+        /// <summary>过场用：有手电就强制打开、停止闪烁（每帧调用也行）。</summary>
+        public void ForceOn()
+        {
+            Flickering = false;
+            flickerPhaseOn = true;
+            SwitchedOn = hasFlashlight;
             ApplyLight();
         }
 

@@ -5,6 +5,7 @@
 
 处理：
 - 只导出骨骼和网格：.blend 里自带的 Camera / Light 导进 Unity 会抢走玩家画面。
+- 按部位分 7 个材质槽（Tools/girl_colors.py），Unity 里重映射到 Assets/Art/Models/Girl/Materials/。
 - 爬行动作原地化：原动作一圈会整体往前爬 ~2.5 m，循环时会"瞬移"回原点；
   这里把 Hips 在水平面上的线性位移从 Armature 物体上抵消掉，保留身体的左右/上下起伏。
   移动交给 NavMeshAgent。
@@ -21,6 +22,14 @@ for o in list(bpy.data.objects):
         bpy.data.objects.remove(o, do_unlink=True)
 
 arm = next(o for o in bpy.data.objects if o.type == "ARMATURE")
+
+# 按部位分材质槽（相框/画里黑/皮肤/头发/衣服/眼睛），见 Tools/girl_colors.py
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import girl_colors  # noqa: E402
+
+model = next(o for o in bpy.data.objects if o.type == "MESH")
+girl_colors.apply(model, arm)
 action = arm.animation_data.action
 f0, f1 = int(action.frame_range[0]), int(action.frame_range[1])
 scene.frame_start, scene.frame_end = f0, f1
