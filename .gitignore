@@ -123,3 +123,10 @@ Docs/Backup/**/Graybox.unity.txt
 # 场景备份（每份 12–18 MB，只留在本机）和 Python 缓存
 Docs/Backup/
 __pycache__/
+
+# 打 WebGL 包时 Burst 在工程根目录吐出来的中间产物
+/Data/
+# WebGL 打包输出（56 MB，不入库）
+/Builds/
+# WorkBuddy 发布应用留下的内部标记文件
+.wbapp_*.genie
