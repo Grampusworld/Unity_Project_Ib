@@ -9,8 +9,9 @@ using UnityEngine.InputSystem;
 namespace Ib.Interaction
 {
     /// <summary>
-    /// 拿钥匙时的检视（老大 2026-11-01）：锁控制（右下角按键提示跟着藏），钥匙从抽屉里匀速飞到屏幕正中间、
+    /// 拿钥匙时的检视（老大 2026-11-01）：锁控制（右下角按键提示跟着藏），钥匙从抽屉里飞到屏幕正中间、
     /// 转成纸签朝着镜头；之后按住鼠标拖动旋转，E 或 Esc 收下（屏幕底部一行小字提示）。收下后钥匙消失、进背包（onTaken）。
+    /// 检视期间世界冻结（timeScale = 0、声音暂停，同暂停菜单，老大 2026-11-02），所以动画全用 unscaled 时间。
     /// 模型是 Resources/Props/MainDoorKey（MainDoorKeyBuilder 生成）。检视时钥匙旁边挂一盏很弱的暖光，停电后也看得清纸签。
     /// </summary>
     public sealed class KeyInspect : MonoBehaviour
@@ -18,7 +19,9 @@ namespace Ib.Interaction
         private const string PrefabPath = "Props/MainDoorKey";
         private const string HintText = "Drag to rotate  ·  E to take";
 
-        [SerializeField, Min(0.05f)] private float flySpeed = 0.9f;
+        [SerializeField, Min(0.05f)] private float flySpeed = 3.2f;
+        [Tooltip("飞进屏幕中央最长用时（秒），距离再远也不拖沓")]
+        [SerializeField, Min(0.05f)] private float maxFlySeconds = 0.35f;
         [SerializeField, Min(0.1f)] private float holdDistance = 0.2f;
         [SerializeField, Min(0.01f)] private float dragDegreesPerPixel = 0.35f;
 
@@ -26,6 +29,7 @@ namespace Ib.Interaction
         private Transform key;
         private Action onTaken;
         private bool taking;
+        private bool frozen;
 
         public static bool Begin(Vector3 from, Quaternion fromRotation, Action onTaken)
         {
@@ -67,16 +71,18 @@ namespace Ib.Interaction
         private IEnumerator Run(Transform glow)
         {
             GameFlow.SetInputLocked(true);
+            GameFlow.SetTimeFrozen(true);
+            frozen = true;
             Presentation.IsInspecting = true;
 
             localCenter = key.InverseTransformPoint(KeyCenter());
 
-            // 1) 匀速飞到屏幕中间（朝向按同样的进度转过来）
+            // 1) 匀速飞到屏幕中间（朝向按同样的进度转过来）。世界已冻结，用 unscaledDeltaTime。
             Vector3 start = key.position;
             Quaternion startRot = key.rotation;
             float distance = Vector3.Distance(start, HoldPoint);
-            float seconds = Mathf.Max(0.25f, distance / flySpeed);
-            for (float t = 0f; t < seconds; t += Time.deltaTime)
+            float seconds = Mathf.Clamp(distance / flySpeed, 0.12f, maxFlySeconds);
+            for (float t = 0f; t < seconds; t += Time.unscaledDeltaTime)
             {
                 float k = t / seconds;
                 key.SetPositionAndRotation(Vector3.Lerp(start, HoldPoint, k), Quaternion.Slerp(startRot, Facing, Mathf.SmoothStep(0f, 1f, k)));
@@ -114,16 +120,20 @@ namespace Ib.Interaction
                 yield return null;
             }
 
-            // 3) 收下：往下收出画面，然后进背包
+            // 3) 收下：往下收出画面，然后进背包（仍在冻结中，用 unscaled 时间）
             ScreenVeil.Hint("");
-            Sfx.PlayAt(Sfx.KeyClick, key.position, 0.6f, 5f);
             Vector3 from = key.position;
             Vector3 to = eye.position + eye.forward * 0.25f - eye.up * 0.25f;
-            for (float t = 0f; t < 0.3f; t += Time.deltaTime)
+            for (float t = 0f; t < 0.3f; t += Time.unscaledDeltaTime)
             {
                 key.position = Vector3.Lerp(from, to, t / 0.3f);
                 yield return null;
             }
+
+            // 先解冻再放收下的咔哒声，否则会被 AudioListener.pause 一起静音
+            GameFlow.SetTimeFrozen(false);
+            frozen = false;
+            Sfx.PlayAt(Sfx.KeyClick, key.position, 0.6f, 5f);
 
             Presentation.IsInspecting = false;
             GameFlow.SetInputLocked(false);
@@ -153,7 +163,13 @@ namespace Ib.Interaction
 
         private void OnDestroy()
         {
-            // 场景被重新加载（退回主菜单）时也别把检视状态留下
+            // 场景被重新加载（退回主菜单）时也别把检视 / 冻结状态留下
+            if (frozen)
+            {
+                frozen = false;
+                GameFlow.SetTimeFrozen(false);
+            }
+
             if (Presentation.IsInspecting && !taking)
             {
                 Presentation.IsInspecting = false;

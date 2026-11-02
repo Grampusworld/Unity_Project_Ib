@@ -69,7 +69,10 @@ namespace Ib.EditorTools
         private const float PowerRoomNorthZ = 12.2f;
 
         // ---- 二层 ----
-        private const float DutyNorthZ = 10.6f;        // 值班室 13 × 10.6（西南角），北面是未开放区
+        // 值班室（监控室）2026-11-02 老大要求缩到原来 1/4：13 × 10.6 → 6.5 × 5.3（墙中线 34.45 ㎡）。
+        // 东墙仍是 Line_West（电磁锁门不动），西侧新砌 Duty_West，原房西北角留作封闭死区。
+        private const float DutyWestX = 6.5f;          // 值班室西墙（墙中线）
+        private const float DutyNorthZ = 5.3f;         // 值班室北墙（墙中线）
         private const float FamilySouthZ = 8f;         // 全家福厅 14 × 11（东侧中段）
         private const float FamilyNorthZ = 19f;
         private const float ToiletNorthZ = 7f;         // 厕所 7 × 7（东南角）
@@ -410,7 +413,8 @@ namespace Ib.EditorTools
 
             // 西线：值班室 / 未开放（西北） | 名画长廊 / 楼梯厅
             WallAlongZ(root, "Line_West", WestLineX, 0f, BuildingDepth, y, h, m, DutyDoor, LockedDoor);
-            WallAlongX(root, "Duty_North", DutyNorthZ, 0f, WestLineX, false, false, y, h, m);
+            WallAlongX(root, "Duty_North", DutyNorthZ, 0f, DutyWestX, true, true, y, h, m);
+            WallAlongZ(root, "Duty_West", DutyWestX, 0f, DutyNorthZ, y, h, m);
 
             // 东线：名画长廊 / 楼梯厅 | 厕所 / 全家福厅 / 未开放（东北）
             WallAlongZ(root, "Line_East", EastLineX, 0f, BuildingDepth, y, h, m,
@@ -602,10 +606,10 @@ namespace Ib.EditorTools
             // ---- 值班室 ----
             Transform duty = NewGroup(root, "DutyRoom");
             // 第 14 步：停电且有手电时按 E 查看监控 → AngelsActive；AddProp 的方块自带 BoxCollider
-            AddProp(duty, "A_MonitorWall", 6.5f, y + 0.5f, DutyNorthZ - HalfWall - 0.25f, 4.0f, 1.3f, 0.4f, p.Key)
+            AddProp(duty, "A_MonitorWall", 9.75f, y + 0.5f, DutyNorthZ - HalfWall - 0.25f, 4.0f, 1.3f, 0.4f, p.Key)
                 .AddComponent<MonitorTerminal>();
-            AddProp(duty, "DutyDesk", 6.5f, y, 9.4f, 3.6f, 0.75f, 0.9f, p.Prop);
-            AddProp(duty, "A_HandoverLog", 5.8f, y + 0.75f, 9.3f, 0.4f, 0.04f, 0.3f, p.Key);
+            AddProp(duty, "DutyDesk", 9.75f, y, 4.1f, 3.6f, 0.75f, 0.9f, p.Prop);
+            AddProp(duty, "A_HandoverLog", 9.05f, y + 0.75f, 4.0f, 0.4f, 0.04f, 0.3f, p.Key);
 
             // ---- 厕所 ----
             Transform toilet = NewGroup(root, "Toilet");
@@ -710,7 +714,7 @@ namespace Ib.EditorTools
 
             AddNote(root, "Room_Gallery", new Vector3(19.5f, y2, 12f), "名画长廊 13×21（展柜 5）", false);
             AddNote(root, "Room_Family", new Vector3(33f, y2, 13.5f), "全家福厅 14×11", false);
-            AddNote(root, "Room_Duty", new Vector3(6.5f, y2, 5f), "值班室 13×10.6 · A 监控屏", false);
+            AddNote(root, "Room_Duty", new Vector3(6.5f, y2, 5f), "值班室 6.5×5.3·1/4 · A 监控屏", false);
             AddNote(root, "Room_Toilet", new Vector3(28.5f, y2, 3.5f), "厕所 7×7 · 手电", false);
             AddNote(root, "Room_Closed_NW", new Vector3(6.5f, y2, 18f), "未开放（西北）", false);
             AddNote(root, "Room_Closed_NE", new Vector3(33f, y2, 22.5f), "未开放（东北）", false);
@@ -1083,12 +1087,12 @@ namespace Ib.EditorTools
             if (dutyDesk != null)
             {
                 Transform duty = dutyDesk.transform.parent;
-                // 东墙（门那面）门北边，离门洞够远
-                MakeTextPickup(Framed(AddWallPanel(duty, "Text_T8_NightRules", new Vector3(WestLineX - HalfWall, y2 + 1.3f, 6.5f),
+                // 东墙（门那面）门南边，离门洞够远（房间缩到 5.3 深，原 z 6.5 已经在墙外）
+                MakeTextPickup(Framed(AddWallPanel(duty, "Text_T8_NightRules", new Vector3(WestLineX - HalfWall, y2 + 1.3f, 1.2f),
                     Vector3.left, 0.5f, 0.65f, board), paper), "T8");
                 // 两个文件夹并排在桌面东半边（交接本在西边 x 5.8）
-                MakeTextPickup(Framed(AddProp(duty, "Text_T13_StockForm", 7.2f, y2 + 0.75f, 9.3f, 0.3f, 0.03f, 0.22f, board), paper), "T13");
-                MakeTextPickup(Framed(AddProp(duty, "Text_T16_DeathRuling", 7.75f, y2 + 0.75f, 9.4f, 0.3f, 0.03f, 0.22f, board), paper), "T16");
+                MakeTextPickup(Framed(AddProp(duty, "Text_T13_StockForm", 10.45f, y2 + 0.75f, 4.0f, 0.3f, 0.03f, 0.22f, board), paper), "T13");
+                MakeTextPickup(Framed(AddProp(duty, "Text_T16_DeathRuling", 11.0f, y2 + 0.75f, 4.1f, 0.3f, 0.03f, 0.22f, board), paper), "T16");
             }
         }
 
@@ -1239,7 +1243,7 @@ namespace Ib.EditorTools
             AddRoomLights(deferred, "Gallery", WestLineX, EastLineX, 0f, StairHallSouthZ, Floor2Y + c2, false);
             AddRoomLights(deferred, "StairHall_2F", WestLineX, EastLineX, StairHallSouthZ, BuildingDepth, Floor2Y + c2, false, ColdLight, 1);
             AddRoomLights(deferred, "Family", EastLineX, BuildingWidth, FamilySouthZ, FamilyNorthZ, Floor2Y + c2, false);
-            AddRoomLights(deferred, "Duty", 0f, WestLineX, 0f, DutyNorthZ, Floor2Y + c2, false);
+            AddRoomLights(deferred, "Duty", DutyWestX, WestLineX, 0f, DutyNorthZ, Floor2Y + c2, false);
             AddRoomLights(deferred, "Toilet", EastLineX, ToiletEastX, 0f, ToiletNorthZ, Floor2Y + c2, false);
 
             // 天窗冷光，把天使单独打出来（手电与注视的"被照亮"判定以后在这上面调）

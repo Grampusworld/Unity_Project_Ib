@@ -1,5 +1,6 @@
 using Ib.Core;
 using Ib.Flow;
+using Ib.UI;
 using UnityEngine;
 
 namespace Ib.Interaction
@@ -7,12 +8,14 @@ namespace Ib.Interaction
     /// <summary>
     /// 正门的黄铜锁（GDD §3.5 / §3.6 第 13、17 步），只在出画以后（真实馆里）出现：
     /// 没钥匙 = 推不动（咔哒一声，拿到手电以后才给「找到打开主门的钥匙」）；
-    /// 有钥匙 = 第一次按 E 插进锁孔；之后再按 E 弹确认窗，选 Open 进坏结局，选 Don't open 关窗、钥匙留在锁里。
+    /// 有钥匙 = 按一次 E 就插进锁孔，插钥匙动画放完直接进坏结局 CG（老大 2026-11-02：去掉确认弹窗，
+    /// 只想走真结局的玩家不要来碰门，直接回二楼全家福）。
     /// 碰撞体是贴在门内侧的一块薄板，序章时关掉，免得挡住推门（DoubleDoor 自己的交互）。
     /// 锁片挂在门的根节点上、不跟门板转，所以只在门关着、并且已经进过馆（大门被 MuseumEntrance 关死以后）才显示；
     /// 推门开着的那段时间不显示，不然会悬在门洞里。
-    /// 第一次插钥匙有一段约 1 s 的动画（老大 2026-11-01）：镜头凑到锁前，钥匙滑进锁孔、拧 90°，锁舌缩回去，咔哒一声，
-    /// 镜头退回、放开控制；之后仍是"再按一次 → 确认窗"。钥匙模型 / 锁舌由「布置正门钥匙」菜单换上（keyVisual = MainDoorKey 实例）。
+    /// 插钥匙动画约 1.75 s（老大 2026-11-01）：镜头凑到锁前，钥匙滑进锁孔、拧 90°，锁舌缩回去，咔哒一声，镜头退回。
+    /// 动画期间 Time.timeScale = 0（老大 2026-11-02），但保留咔哒声，所以用 unscaled 时间推进。
+    /// 钥匙模型 / 锁舌由「布置正门钥匙」菜单换上（keyVisual = MainDoorKey 实例）。
     /// Ib Level 挂在 MainDoor_Double/MainDoor_Lock 上（布置后半段时生成）。
     /// </summary>
     [DisallowMultipleComponent]
@@ -130,6 +133,7 @@ namespace Ib.Interaction
                     Sfx.PlayAt(Sfx.KeyClick, transform.position);
                     GameFlow.KeyInserted = true;
                     Apply();
+                    SceneTransitions.BadEnding();   // 单次交互：没有确认窗，直接进结局 CG
                     return;
                 }
 
@@ -137,14 +141,20 @@ namespace Ib.Interaction
                 return;
             }
 
-            SceneTransitions.AskOpenMainDoor();
+            // 已经插着钥匙（调试 / 旧存档）：再按一次也直接进结局，不再弹确认窗
+            SceneTransitions.BadEnding();
         }
 
-        /// <summary>镜头凑近 0.3 s → 钥匙滑进去 0.35 s → 拧 0.3 s → 锁舌缩回 0.25 s（咔哒）→ 镜头退回 0.3 s。</summary>
+        /// <summary>
+        /// 镜头凑近 0.3 s → 钥匙滑进去 0.35 s → 拧 0.3 s → 锁舌缩回 0.25 s（咔哒）→ 停 0.25 s → 镜头退回 0.3 s，
+        /// 然后直接进坏结局 CG。全程 Time.timeScale = 0，用 unscaled 时间；声音不暂停，咔哒声要听得见。
+        /// </summary>
         private System.Collections.IEnumerator Unlock(Transform eye)
         {
             animating = true;
             GameFlow.SetInputLocked(true);
+            GameFlow.SetTimeFrozen(true, false);
+            Presentation.IsInspecting = true;   // 冻结期间 Esc 不弹暂停菜单
 
             Transform k = keyVisual.transform;
             Quaternion straight = keyTurnedRot * Quaternion.AngleAxis(-turnDegrees, Vector3.forward);
@@ -187,7 +197,7 @@ namespace Ib.Interaction
 
             Sfx.PlayAt(Sfx.LockRattle, hole, 0.35f, 10f);
             GameFlow.KeyInserted = true;
-            yield return new WaitForSeconds(0.25f);
+            yield return new WaitForSecondsRealtime(0.25f);
 
             Vector3 backPos = eye.parent != null ? eye.parent.TransformPoint(eyeLocal) : fromPos;
             Quaternion backRot = eye.parent != null ? eye.parent.rotation * eyeLocalRot : fromRot;
@@ -197,12 +207,16 @@ namespace Ib.Interaction
 
             animating = false;
             Apply();
-            GameFlow.SetInputLocked(false);
+            GameFlow.SetTimeFrozen(false);
+            Presentation.IsInspecting = false;
+
+            // 不再放开控制、也不再等第二次按键：直接接坏结局 CG（SceneTransitions.BadEnding 会锁住控制并切 Ending）
+            SceneTransitions.BadEnding();
         }
 
         private static System.Collections.IEnumerator Tween(float seconds, System.Action<float> set)
         {
-            for (float t = 0f; t < seconds; t += Time.deltaTime)
+            for (float t = 0f; t < seconds; t += Time.unscaledDeltaTime)
             {
                 set(Mathf.SmoothStep(0f, 1f, t / seconds));
                 yield return null;

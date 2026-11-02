@@ -130,6 +130,7 @@ namespace Ib.EditorTools
 
             // ---- 3. 导航网格 ----
             BakeNavMesh();
+            AddStairsNoGo();
 
             // ---- 4. 手电 ----
             AddFlashlightToPlayerPrefab();
@@ -235,7 +236,107 @@ namespace Ib.EditorTools
 
         // ================================================================ 导航网格
 
+        /// <summary>
+        /// 天使只在一楼（老大 2026-11-02）：一楼导航网格的烘焙盒一直罩到 7.56 m，楼梯第一跑和平台都烘进去了。
+        /// 第一跑（Flight_1，楼梯唯一的入口）上放一块挖洞的 NavMeshObstacle（不带碰撞，玩家照常走），天使的路径上不了台阶，
+        /// 平台和第二跑也就到不了。只挖第一跑：整座楼梯的包围盒会把第二跑下面那片一楼地面、连同拱门到楼梯脚的通道一起挖掉。
+        /// 盒子顶在二楼楼面以下，不影响二楼名画人物的导航网格。可重复执行。
+        /// </summary>
+        [MenuItem("Tools/Ib/天使禁区：楼梯")]
+        public static void AddStairsNoGo()
+        {
+            GameObject stairs = GameObject.Find("Level_Museum/Stairs/Flight_1") ?? GameObject.Find("Level_Museum/Stairs");
+            if (stairs == null)
+            {
+                Debug.LogWarning("[WeepingAngelSetup] 找不到 Level_Museum/Stairs，跳过楼梯禁区。");
+                return;
+            }
+
+            Bounds b = default;
+            bool any = false;
+            foreach (Renderer r in stairs.GetComponentsInChildren<Renderer>())
+            {
+                if (!any)
+                {
+                    b = r.bounds;
+                    any = true;
+                }
+                else
+                {
+                    b.Encapsulate(r.bounds);
+                }
+            }
+
+            if (!any)
+            {
+                return;
+            }
+
+            GameObject root = GameObject.Find("--- NavMesh ---");
+            if (root == null)
+            {
+                root = new GameObject("--- NavMesh ---");
+            }
+
+            Transform old = root.transform.Find("AngelNoGo_Stairs");
+            if (old != null)
+            {
+                Object.DestroyImmediate(old.gameObject);
+            }
+
+            // 第一跑从东往西上：东端（x 最大）是第一级，往外多挖 0.35 m；顶在二楼楼面以下 0.6 m
+            float floor2 = 6.4f * GrayboxBuilder.WorldScale;
+            float top = Mathf.Min(b.max.y + 0.5f, floor2 - 0.6f);
+            Vector3 min = new Vector3(b.min.x, -0.5f, b.min.z);
+            Vector3 max = new Vector3(b.max.x + 0.35f, top, b.max.z);
+            GameObject go = new GameObject("AngelNoGo_Stairs");
+            go.transform.SetParent(root.transform, false);
+            go.transform.position = (min + max) * 0.5f;
+            NavMeshObstacle o = go.AddComponent<NavMeshObstacle>();
+            o.shape = NavMeshObstacleShape.Box;
+            o.size = max - min;
+            o.center = Vector3.zero;
+            o.carving = true;
+            o.carveOnlyStationary = true;
+
+            EditorSceneManager.MarkSceneDirty(go.scene);
+            EditorSceneManager.SaveScene(go.scene);
+            Debug.Log("[WeepingAngelSetup] 楼梯禁区：" + min.ToString("F1") + " – " + max.ToString("F1"));
+        }
+
+        /// <summary>只重新烘焙一、二层导航网格（不重建天使）。</summary>
+        [MenuItem("Tools/Ib/重新烘焙导航网格")]
+        private static void RebakeNavMeshMenu()
+        {
+            BakeNavMesh();
+            AddStairsNoGo();
+        }
+
         private static void BakeNavMesh()
+        {
+            // 画中馆的游客（NPC_Crowd）只在怪物还没出动时在场；带着它们烘焙，它们站过的地方会变成永久的洞
+            //（一楼楼梯厅那组正好堵住拱门到楼梯脚的通道，天使走不过去）。烘焙时先藏起来，完了再还原。
+            GameObject crowd = GameObject.Find("NPC_Crowd");
+            bool crowdWasActive = crowd != null && crowd.activeSelf;
+            if (crowdWasActive)
+            {
+                crowd.SetActive(false);
+            }
+
+            try
+            {
+                BakeNavMeshInner();
+            }
+            finally
+            {
+                if (crowdWasActive)
+                {
+                    crowd.SetActive(true);
+                }
+            }
+        }
+
+        private static void BakeNavMeshInner()
         {
             GameObject go = GameObject.Find("--- NavMesh ---");
             if (go == null)

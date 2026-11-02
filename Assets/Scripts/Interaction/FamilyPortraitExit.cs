@@ -9,7 +9,7 @@ namespace Ib.Interaction
     /// <summary>
     /// 二楼的《全家福》。画中馆和真实馆是同一个画架：
     /// PaintedGallery 时按 E → 黑屏回到黑屋（GDD §3.6 第 6 步）；
-    /// 天使出动后、钥匙已经插在正门锁孔里（没开门）时按 E → 走进那块空白，真结局（§6.9）。
+    /// 天使出动后、身上带着主门钥匙（能离开，但没去开正门）时按 E → 走进那块空白，真结局（§6.9）。
     /// 回黑屋（出画第一拍，GDD §3.2 第五段，老大 2026-11-01）：镜头锁到画上、慢慢拉回到正对整幅画的位置，
     /// 展厅从四周往里褪成黑色（ScreenVeil.Hole），只剩那幅画；画上叠一张同样的画（盖住画前的 Grampus 和两边灯光的差别），
     /// 传回黑屋并把玩家摆在与草稿完全相同的相对位置 → 叠的画淡掉、黑幕往外散开，镜头回到手里时已经站在黑屋画架前。全程不剪。
@@ -37,7 +37,9 @@ namespace Ib.Interaction
 
         public bool CanInteract => (GameFlow.State == GameState.PaintedGallery || CanEnterBlank) && !SceneTransitions.Busy && !pushing;
 
-        private static bool CanEnterBlank => GameFlow.State == GameState.AngelsActive && GameFlow.KeyInserted;
+        // 老大 2026-11-02：正门改成单次交互直接进坏结局，真结局不能再要求"钥匙已插进锁孔"，
+        // 改为只要身上有钥匙（= 已经能离开，却选择回来）就能走进空白。
+        private static bool CanEnterBlank => GameFlow.State == GameState.AngelsActive && GameFlow.HasKey;
 
         public void Interact(PlayerInteractor interactor)
         {

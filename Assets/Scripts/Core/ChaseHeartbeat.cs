@@ -142,7 +142,7 @@ namespace Ib.Core
 
             foreach (WeepingAngel angel in WeepingAngel.All)
             {
-                if (angel != null && angel.IsChasing)
+                if (angel != null && angel.IsClosingIn)
                 {
                     best = Mathf.Min(best, Vector3.Distance(p, angel.transform.position));
                 }

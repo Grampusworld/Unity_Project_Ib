@@ -1,3 +1,4 @@
+using Ib.Flow;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -72,6 +73,7 @@ namespace Ib.UI
             else if (Confirm.IsOpen) Confirm.Cancel();
             else if (Reader.IsOpen) Reader.Close();
             else if (Presentation.IsInspecting) { }
+            else if (GameFlow.IsFrozen) { }
             else if (Settings.IsOpen) Settings.Close();
             else if (Menu.IsOpen) { }
             else Pause.EscapePressed();

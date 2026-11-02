@@ -7,7 +7,8 @@ namespace Ib.UI
 {
     /// <summary>
     /// GDD §3.7 任务提示：新提示在屏幕上方淡入、停 3 秒，然后缩小滑到左上角常驻，直到下一条提示把它换掉（老大 2026-11-01）。
-    /// 主菜单和结局时隐藏。用游戏时间，暂停时一起停住。
+    /// 主菜单和结局时隐藏。拿到主门钥匙以后不再有任何提示（§3.7），常驻的那条慢慢淡掉（老大 2026-11-02）。
+    /// 用游戏时间，暂停时一起停住。
     /// </summary>
     internal sealed class HintBar : MonoBehaviour
     {
@@ -71,6 +72,26 @@ namespace Ib.UI
                 hasHint = false;
                 group.alpha = 0f;
             }
+            else if (hasHint && GameFlow.HasKey)
+            {
+                if (playing != null) StopCoroutine(playing);
+                hasHint = false;
+                playing = StartCoroutine(FadeOut());
+            }
+        }
+
+        private IEnumerator FadeOut()
+        {
+            const float seconds = 1.5f;
+            float from = group.alpha;
+            for (float t = 0f; t < seconds; t += Time.deltaTime)
+            {
+                group.alpha = Mathf.Lerp(from, 0f, t / seconds);
+                yield return null;
+            }
+
+            group.alpha = 0f;
+            playing = null;
         }
 
         private IEnumerator Play(string line)

@@ -203,7 +203,7 @@ namespace Ib.EditorTools
             {
                 if (x < WestLineX)
                 {
-                    name = z < DutyNorthZ ? "Duty" : null;
+                    name = z < DutyNorthZ && x > DutyWestX ? "Duty" : null;
                 }
                 else if (x > EastLineX)
                 {
@@ -480,7 +480,7 @@ namespace Ib.EditorTools
             AddBeamGrid(parent, "Costume", EastLineX + i, BuildingWidth - i, i, BuildingDepth - i, Floor1Height);
             AddBeamGrid(parent, "Gallery", WestLineX + i, EastLineX - i, i, StairHallSouthZ - i, RoofY);
             AddBeamGrid(parent, "StairHall_2F", WestLineX + i, EastLineX - i, StairHallSouthZ + i, BuildingDepth - i, RoofY);
-            AddBeamGrid(parent, "Duty", i, WestLineX - i, i, DutyNorthZ - i, RoofY);
+            AddBeamGrid(parent, "Duty", DutyWestX + i, WestLineX - i, i, DutyNorthZ - i, RoofY);
 
             // 木板天花：两层的大厅都一样（梁之间是木板，不再是灰色抹灰）。全家福厅、厕所、雕塑厅、配电间保持抹灰
             Transform panels = NewGroup(parent, "CeilingPanels");
@@ -489,7 +489,7 @@ namespace Ib.EditorTools
             CeilingPanel(panels, "Costume", EastLineX + i, BuildingWidth - i, i, BuildingDepth - i, Floor1Height);
             CeilingPanel(panels, "Gallery", WestLineX + i, EastLineX - i, i, StairHallSouthZ - i, RoofY);
             CeilingPanel(panels, "StairHall_2F", WestLineX + i, EastLineX - i, StairHallSouthZ + i, BuildingDepth - i, RoofY);
-            CeilingPanel(panels, "Duty", i, WestLineX - i, i, DutyNorthZ - i, RoofY);
+            CeilingPanel(panels, "Duty", DutyWestX + i, WestLineX - i, i, DutyNorthZ - i, RoofY);
         }
 
         /// <summary>2 cm 厚的木板天花，贴在楼板 / 屋顶底面下面（顶面和楼板底面朝向相反，不会闪）。</summary>

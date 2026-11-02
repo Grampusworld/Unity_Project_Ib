@@ -41,17 +41,17 @@ namespace Ib.Environment
             Transform walls = museum != null ? museum.Find("Walls_2F") : null;
             if (walls == null)
             {
-                // 灰盒常量 × WorldScale 1.4：室内 x 0.21–17.99，z 0.21–14.63
-                duty = new Bounds(new Vector3(9.10f, 8.96f, 7.42f), new Vector3(17.78f, 7f, 14.42f));
+                // 灰盒常量 × WorldScale 1.4：室内 x 9.31–17.99，z 0.21–7.21（2026-11-02 缩到 1/4）
+                duty = new Bounds(new Vector3(13.65f, 8.96f, 3.71f), new Vector3(8.68f, 7f, 7.00f));
                 return;
             }
 
             if (!TryBounds(walls, "Duty_North", out Bounds north)
                 || !TryBounds(walls, "Line_West", out Bounds east)
                 || !TryBounds(walls, "Ext_South", out Bounds south)
-                || !TryBounds(walls, "Ext_West", out Bounds west))
+                || !(TryBounds(walls, "Duty_West", out Bounds west) || TryBounds(walls, "Ext_West", out west)))
             {
-                duty = new Bounds(new Vector3(9.10f, 8.96f, 7.42f), new Vector3(17.78f, 7f, 14.42f));
+                duty = new Bounds(new Vector3(13.65f, 8.96f, 3.71f), new Vector3(8.68f, 7f, 7.00f));
                 return;
             }
 
@@ -61,7 +61,7 @@ namespace Ib.Environment
             float zMax = north.min.z;
             if (xMax <= xMin + 1f || zMax <= zMin + 1f)
             {
-                duty = new Bounds(new Vector3(9.10f, 8.96f, 7.42f), new Vector3(17.78f, 7f, 14.42f));
+                duty = new Bounds(new Vector3(13.65f, 8.96f, 3.71f), new Vector3(8.68f, 7f, 7.00f));
                 return;
             }
 
@@ -103,3 +103,5 @@ namespace Ib.Environment
         }
     }
 }
+
+// 2026-11-02 值班室缩到 1/4：房间范围改为按 Duty_West 取。

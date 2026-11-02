@@ -14,6 +14,10 @@ namespace Ib.Threats
     /// - Peek   偷看：松手回看。不被注视时原地慢慢转身朝向玩家，被注视时不动。
     /// - Attack 攻击：下展台，沿固定路线在一层巡逻；发现玩家后追击，碰到玩家就抓住（jump scare 后黑屏 GAME OVER）。
     ///   玩家还在楼上时不下展台，先瞬移到一楼楼梯脚等着，玩家下楼才开始。
+    ///   只在一楼活动（老大 2026-11-02）：不上楼梯（楼梯上有一块 NavMeshObstacle 挖掉的禁区，见 WeepingAngelSetup），
+    ///   玩家在楼梯上或二楼时，追击的目标改成楼梯脚，在那儿等他下来。
+    ///   一旦开始追击就永不放弃：看丢了也一直朝玩家当前位置走，只有死亡重生 / 读档才回到初始状态。
+    ///   手电闪烁和被追击心跳只在"追着、而且玩家在一楼"时出现（IsClosingIn），玩家躲在楼上时不闪。
     ///
     /// 注视规则（R4-1）：玩家看着它时它完全不动。"看着" = 在相机视锥内 + 视线没被挡 + 看得清。
     /// 看得清：全馆灯亮着（闭馆后，还没拿到手电）就够了；停电后必须被手电照着，
@@ -52,8 +56,6 @@ namespace Ib.Threats
         [SerializeField, Range(10f, 360f)] private float detectFov = 140f;
         [Tooltip("贴得这么近时，不用看见也能察觉到玩家。")]
         [SerializeField, Min(0f)] private float senseRange = 3f;
-        [Tooltip("丢失视线这么久后放弃追击，回到巡逻路线。")]
-        [SerializeField, Min(0f)] private float loseTargetSeconds = 6f;
         [Tooltip("攻击阶段里玩家连续盯着它超过这么久，它就不再老实：手电开始闪，它开始追。")]
         [SerializeField, Min(0f)] private float stareLimitSeconds = 3f;
         [SerializeField, Min(0.1f)] private float catchDistance = 0.9f;
@@ -64,10 +66,12 @@ namespace Ib.Threats
         [Header("楼下等待")]
         [Tooltip("一楼地面的世界高度（判断玩家在不在楼上的基准）。")]
         [SerializeField] private float groundFloorY = 0f;
-        [Tooltip("玩家高出一楼地面这么多算还在楼上：天使不下展台，先到楼梯脚等着。")]
+        [Tooltip("玩家高出一楼地面这么多算还在楼上（攻击开始时）：天使不下展台，先到楼梯脚等着。")]
         [SerializeField, Min(0f)] private float upstairsMargin = 4f;
         [Tooltip("玩家高出一楼地面不到这个高度就算已下楼：天使恢复正常追击。")]
         [SerializeField, Min(0f)] private float downstairsMargin = 1.5f;
+        [Tooltip("追击中玩家脚底高出一楼地面这么多（踏上楼梯）就算离开一楼：天使改去楼梯脚等。")]
+        [SerializeField, Min(0f)] private float offFloorMargin = 0.35f;
         [Tooltip("楼梯脚等待点用的出生点名（PlayerSpawnPoint）。")]
         [SerializeField] private string stairsSpawnName = "DBG7_Stairs_1F";
         [Tooltip("找不到楼梯脚标记时的兜底坐标（世界）。")]
@@ -84,6 +88,9 @@ namespace Ib.Threats
         /// <summary>攻击阶段里是否在追玩家。</summary>
         public bool IsChasing { get; private set; }
 
+        /// <summary>追着、而且玩家就在一楼地面上：手电闪、心跳响。玩家在楼梯上 / 二楼时为 false。</summary>
+        public bool IsClosingIn => IsChasing && !playerOffFloor;
+
         public static readonly List<WeepingAngel> All = new List<WeepingAngel>();
 
         private NavMeshAgent agent;
@@ -91,12 +98,17 @@ namespace Ib.Threats
         private Quaternion homeRotation;
         private int patrolIndex;
         private int patrolDirection = 1;
-        private float lastSeenPlayerTime = -999f;
         private float observedSince = -1f;
 
         private FirstPersonController player;
         private Camera playerCamera;
         private bool waitingDownstairs;
+        private bool playerOffFloor;
+        private Vector3 stairsFoot;
+        private bool stairsFootKnown;
+        private bool stairsTargetSet;
+        private Vector3 stairsTarget;
+        private Vector3 stairsLook;
 
         private void Awake()
         {
@@ -145,6 +157,7 @@ namespace Ib.Threats
 
             phase = next;
             IsChasing = false;
+            stairsTargetSet = false;
 
             SetVisual(stillVisual, phase == Phase.Still);
             SetVisual(peekVisual, phase == Phase.Peek);
@@ -214,25 +227,7 @@ namespace Ib.Threats
         /// <summary>瞬移到楼梯脚东侧站定，朝向楼梯口。落不到导航网格上就返回 false，退回从展台下地。</summary>
         private bool TryWaitByStairs()
         {
-            Vector3 stairs = stairsFallback;
-            bool found = false;
-            foreach (PlayerSpawnPoint mark in FindObjectsByType<PlayerSpawnPoint>(FindObjectsInactive.Include, FindObjectsSortMode.None))
-            {
-                if (mark.name == stairsSpawnName)
-                {
-                    stairs = mark.transform.position;
-                    found = true;
-                    break;
-                }
-            }
-
-            if (!found)
-            {
-                Debug.LogWarning("[WeepingAngel] 场景里没有出生点 " + stairsSpawnName + "，用兜底坐标。", this);
-            }
-
-            Vector3 spot = stairs + Vector3.right * stairsWaitOffsetEast;
-            spot.y = groundFloorY;
+            Vector3 spot = StairsWaitSpot(out Vector3 stairs);
 
             agent.enabled = true;
             if (!NavMesh.SamplePosition(spot, out NavMeshHit hit, 2f, NavMesh.AllAreas) || !agent.Warp(hit.position))
@@ -254,11 +249,50 @@ namespace Ib.Threats
             return true;
         }
 
+        /// <summary>楼梯脚东侧的等待点（一楼地面，导航网格上）。stairs = 楼梯口标记的位置。</summary>
+        private Vector3 StairsWaitSpot(out Vector3 stairs)
+        {
+            stairs = stairsFallback;
+            bool found = false;
+            foreach (PlayerSpawnPoint mark in FindObjectsByType<PlayerSpawnPoint>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (mark.name == stairsSpawnName)
+                {
+                    stairs = mark.transform.position;
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
+            {
+                Debug.LogWarning("[WeepingAngel] 场景里没有出生点 " + stairsSpawnName + "，用兜底坐标。", this);
+            }
+
+            Vector3 spot = stairs + Vector3.right * stairsWaitOffsetEast;
+            spot.y = groundFloorY;
+            if (!stairsFootKnown && NavMesh.SamplePosition(spot, out NavMeshHit hit, 2f, NavMesh.AllAreas))
+            {
+                stairsFoot = hit.position;
+                stairsFootKnown = true;
+            }
+
+            return stairsFootKnown ? stairsFoot : spot;
+        }
+
         // ================================================================ 每帧
 
         private void Update()
         {
             ResolvePlayer();
+            bool offFloor = player != null && player.transform.position.y > groundFloorY + offFloorMargin;
+            if (offFloor != playerOffFloor)
+            {
+                playerOffFloor = offFloor;
+                stairsTargetSet = false;
+                RefreshFlashlightFlicker();
+            }
+
             IsObserved = ComputeObserved();
             if (!IsObserved)
             {
@@ -333,7 +367,6 @@ namespace Ib.Threats
 
                 if (!IsChasing && Time.time - observedSince >= stareLimitSeconds)
                 {
-                    lastSeenPlayerTime = Time.time;
                     IsChasing = true;
                     agent.speed = chaseSpeed;
                     RefreshFlashlightFlicker();
@@ -343,28 +376,49 @@ namespace Ib.Threats
 
             agent.isStopped = false;
 
-            bool canSee = CanSensePlayer();
-            if (canSee)
+            // 一旦发现就不再放弃（老大 2026-11-02）：之后无论看不看得见都朝玩家走
+            if (!IsChasing && player != null && CanSensePlayer())
             {
-                lastSeenPlayerTime = Time.time;
-            }
-
-            bool chasing = player != null && Time.time - lastSeenPlayerTime < loseTargetSeconds;
-            if (chasing != IsChasing)
-            {
-                IsChasing = chasing;
+                IsChasing = true;
                 RefreshFlashlightFlicker();
-                if (!chasing)
-                {
-                    agent.speed = patrolSpeed;
-                    patrolIndex = NearestWaypoint();
-                    GoToWaypoint();
-                }
             }
 
             if (IsChasing)
             {
                 agent.speed = chaseSpeed;
+
+                // 只在一楼：玩家上了楼梯 / 到了二楼，就去楼梯脚等着（楼梯上是禁区，导航也到不了）
+                if (playerOffFloor)
+                {
+                    // 目标只算一次：楼梯脚走不到（导航网格上有洞）就停在能走到的最近一点
+                    if (!stairsTargetSet)
+                    {
+                        Vector3 foot = StairsWaitSpot(out stairsLook);
+                        NavMeshPath path = new NavMeshPath();
+                        stairsTarget = NavMesh.CalculatePath(transform.position, foot, NavMesh.AllAreas, path) && path.corners.Length > 0
+                            ? path.corners[path.corners.Length - 1]
+                            : transform.position;
+                        stairsTargetSet = true;
+                        agent.SetDestination(stairsTarget);
+                    }
+
+                    Vector3 flatTo = stairsTarget - transform.position;
+                    flatTo.y = 0f;
+                    if (!agent.pathPending && flatTo.magnitude < 0.6f)
+                    {
+                        agent.isStopped = true;
+                        agent.velocity = Vector3.zero;
+                        Vector3 look = stairsLook - transform.position;
+                        look.y = 0f;
+                        if (look.sqrMagnitude > 0.01f)
+                        {
+                            transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(look), 180f * Time.deltaTime);
+                        }
+                    }
+
+                    return;
+                }
+
                 agent.SetDestination(player.transform.position);
 
                 Vector3 flat = player.transform.position - transform.position;
@@ -464,7 +518,6 @@ namespace Ib.Threats
             {
                 GameOverScreen.Show();
 
-                lastSeenPlayerTime = -999f;
                 IsChasing = false;
                 RefreshFlashlightFlicker();
 
@@ -560,7 +613,7 @@ namespace Ib.Threats
             bool anyChasing = false;
             foreach (WeepingAngel angel in All)
             {
-                anyChasing |= angel.IsChasing;
+                anyChasing |= angel.IsClosingIn;
             }
             flashlight.Flickering = anyChasing;
         }

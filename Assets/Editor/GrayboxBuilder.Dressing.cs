@@ -282,7 +282,7 @@ namespace Ib.EditorTools
             exhibits.Add(new Exhibit { Name = "Restoration_Easel", B = WorldBounds(easel), Normal = Vector3.zero });
 
             // ---- 值班室：桌前一把扶手椅 ----
-            Model(NewGroup(root, "DutyRoom"), "10_armchair", 6.5f, y2, 8.45f, 180f, 1f, true);
+            Model(NewGroup(root, "DutyRoom"), "10_armchair", 11.7f, y2, 1.45f, 180f, 1f, true);
 
             // ---- 灭火器 ----
             Transform safety = NewGroup(root, "Safety");

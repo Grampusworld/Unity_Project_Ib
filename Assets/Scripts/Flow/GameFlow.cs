@@ -24,12 +24,18 @@ namespace Ib.Flow
     /// <summary>
     /// 全局状态机入口（接口见 Docs/Interfaces.md）。
     /// 每次加载场景都从 MainMenu 开始；Quit to Menu 直接重新加载场景即可。
-    /// 暂停冻结的 Time.timeScale 只在这里写（Game Over 仍由 GameOverScreen 自管，两者互斥）。
+    /// 暂停 / 过场冻结的 Time.timeScale 只在这里写（Game Over 仍由 GameOverScreen 自管，两者互斥）。
     /// </summary>
     public static class GameFlow
     {
         public static GameState State { get; private set; } = GameState.MainMenu;
         public static bool IsPaused { get; private set; }
+
+        /// <summary>
+        /// 过场里的"假暂停"：时间停、全部声音停，但不打开暂停菜单、不算 IsPaused（检视钥匙 / 插钥匙动画用）。
+        /// 和 SetPaused 不会同时成立；冻结期间 Esc 由 PresentationRoot 忽略。
+        /// </summary>
+        public static bool IsFrozen { get; private set; }
 
         /// <summary>
         /// 控制权被拿走（过场、特写、检视、推镜头……任何调 SetInputLocked(true) 的地方）。
@@ -77,6 +83,7 @@ namespace Ib.Flow
         private static readonly HashSet<HintId> shownHints = new HashSet<HintId>();
         private static bool menuRegistered;
         private static float pausedTimeScale = 1f;
+        private static float frozenTimeScale = 1f;
 
         /// <summary>主菜单 UI 在 Awake 里调用。没有主菜单的场景会跳过 MainMenu 直接开玩。</summary>
         public static void RegisterMainMenu() => menuRegistered = true;
@@ -100,17 +107,18 @@ namespace Ib.Flow
         }
 
 
-        /// <summary>暂停菜单开关由 Presentation 调用。主菜单、Game Over 期间忽略。</summary>
+        /// <summary>暂停菜单开关由 Presentation 调用。主菜单、Game Over、过场冻结期间忽略。</summary>
         public static void SetPaused(bool paused)
         {
-            if (paused == IsPaused || State == GameState.MainMenu || State == GameState.Ending || GameOverScreen.IsShowing)
+            if (paused == IsPaused || State == GameState.MainMenu || State == GameState.Ending || GameOverScreen.IsShowing
+                || (paused && IsFrozen))
             {
                 return;
             }
 
             IsPaused = paused;
             // 暂停时全部声音一起停（电话铃、底噪、吊灯吱呀），继续时从原处接着放
-            AudioListener.pause = paused;
+            AudioListener.pause = paused || IsFrozen;
             if (paused)
             {
                 pausedTimeScale = Time.timeScale;
@@ -118,10 +126,34 @@ namespace Ib.Flow
             }
             else
             {
-                Time.timeScale = pausedTimeScale;
+                Time.timeScale = IsFrozen ? 0f : pausedTimeScale;
             }
 
             SetInputLocked(paused);
+        }
+
+        /// <summary>
+        /// 过场冻结（检视钥匙、插钥匙动画）：timeScale 归零，做法和暂停菜单一致，但不进暂停状态、不弹菜单。
+        /// 调用方自己的动画必须用 unscaledDeltaTime。pauseAudio=false 时只停世界、保留音效（插钥匙要听见咔哒声）。
+        /// </summary>
+        public static void SetTimeFrozen(bool frozen, bool pauseAudio = true)
+        {
+            if (frozen == IsFrozen)
+            {
+                return;
+            }
+
+            IsFrozen = frozen;
+            AudioListener.pause = frozen ? pauseAudio : IsPaused;
+            if (frozen)
+            {
+                frozenTimeScale = Time.timeScale;
+                Time.timeScale = 0f;
+            }
+            else
+            {
+                Time.timeScale = IsPaused ? 0f : frozenTimeScale;
+            }
         }
 
         /// <summary>任务提示每条每局只发一次（GDD §3.7）。</summary>
@@ -198,6 +230,8 @@ namespace Ib.Flow
             // 关掉"进入 Play 时重载域"也要干净：每次加载都复位
             State = GameState.MainMenu;
             IsPaused = false;
+            IsFrozen = false;
+            frozenTimeScale = 1f;
             InputLocked = false;
             Presentation.IsInspecting = false;
             AudioListener.pause = false;

@@ -200,18 +200,10 @@ namespace Ib.Flow
             Checkpoints.Reach(Checkpoints.TaskC);
         }
 
-        /// <summary>第 17 步：钥匙已插，再按一次 → 确认窗。</summary>
-        public static void AskOpenMainDoor()
-        {
-            GameFlow.SetInputLocked(true);
-            Presentation.Confirm("Are you sure you want to open the door?", "Open", "Don't open",
-                BadEnding,
-                () => GameFlow.SetInputLocked(false));
-        }
-
         /// <summary>
-        /// 第 18 步 · 坏结局：确认开门。先放 CG（BadEndingCutscene：门缓缓打开 → 推进库房 07 → 转身见天使 → 重击硬切黑），
-        /// 黑屏后接同一张结局字幕。场景里缺门 / 库房时退回原来的渐黑。
+        /// 第 18 步 · 坏结局：正门锁的单次交互已经放完插钥匙动画（MainDoorLock.Unlock 调进来），这里直接放 CG
+        /// （BadEndingCutscene：门缓缓打开 → 推进库房 07 → 转身见天使 → 重击硬切黑），黑屏后接同一张结局字幕。
+        /// 场景里缺门 / 库房时退回原来的渐黑。
         /// </summary>
         public static void BadEnding()
         {
@@ -238,12 +230,15 @@ namespace Ib.Flow
             });
         }
 
-        /// <summary>第 18 步 · 真结局：钥匙留在锁孔里，回到全家福前，走进那块空白。</summary>
+        /// <summary>
+        /// 第 18 步 · 真结局：钥匙还在手里（证明他能离开），但没去开正门 —— 回到全家福前，走进那块空白。
+        /// 老大 2026-11-02：大门改成单次交互直接坏结局后，真结局不能再要求"钥匙已插进锁孔"，否则永远走不到。
+        /// </summary>
         public static void TrueEnding(float fadeOutSeconds = FadeSeconds * 3f)
         {
             Ending(fadeOutSeconds, "Family Portrait", new[]
             {
-                "The key is still in the lock. The door could open at any time.",
+                "The key is in his pocket. The door could open at any time.",
                 "He steps into the blank. This time, it lets him in.",
                 "The portrait has four people now.",
                 "Across the room, the blurred man in The Gallery slowly turns his head.",
