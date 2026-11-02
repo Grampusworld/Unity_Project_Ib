@@ -109,6 +109,13 @@ namespace Ib.Threats
         private bool stairsTargetSet;
         private Vector3 stairsTarget;
         private Vector3 stairsLook;
+        private float graceUntil = -1f;
+
+        [Header("楼梯伏击（2026-11-02）")]
+        [Tooltip("玩家下楼触发伏击后，天使这么多秒内不动（被看着照样冻住）。")]
+        [SerializeField, Min(0f)] private float ambushGraceSeconds = 1.5f;
+        [Tooltip("玩家脚底高出一楼地面不超过这个值才能被抓（最低一级台阶 0.195 m）：在楼梯上不会被抓。")]
+        [SerializeField, Min(0f)] private float catchFloorMargin = 0.12f;
 
         private void Awake()
         {
@@ -157,6 +164,7 @@ namespace Ib.Threats
 
             phase = next;
             IsChasing = false;
+            graceUntil = -1f;
             stairsTargetSet = false;
 
             SetVisual(stillVisual, phase == Phase.Still);
@@ -241,6 +249,7 @@ namespace Ib.Threats
             agent.isStopped = true;
             agent.velocity = Vector3.zero;
             waitingDownstairs = true;
+            Sfx.PlayAt(Sfx.StoneScrape, transform.position);   // 就位时一声石头摩擦，提醒玩家
 
             // 朝向楼梯口
             Vector3 to = stairs - transform.position;
@@ -350,6 +359,7 @@ namespace Ib.Threats
                 }
 
                 waitingDownstairs = false;
+                graceUntil = Time.time + ambushGraceSeconds;
                 agent.isStopped = false;
                 agent.speed = patrolSpeed;
                 patrolIndex = NearestWaypoint();
@@ -371,6 +381,14 @@ namespace Ib.Threats
                     agent.speed = chaseSpeed;
                     RefreshFlashlightFlicker();
                 }
+                return;
+            }
+
+            // 伏击触发后的宽限期：原地不动
+            if (Time.time < graceUntil)
+            {
+                agent.isStopped = true;
+                agent.velocity = Vector3.zero;
                 return;
             }
 
@@ -423,7 +441,9 @@ namespace Ib.Threats
 
                 Vector3 flat = player.transform.position - transform.position;
                 flat.y = 0f;
-                if (flat.magnitude < catchDistance && !ThreatSchedule.NoCatch)
+                // 只有玩家踩到一楼地面（下完最后一级台阶）才抓
+                bool onFloor = player.transform.position.y <= groundFloorY + catchFloorMargin;
+                if (flat.magnitude < catchDistance && onFloor && !ThreatSchedule.NoCatch)
                 {
                     CatchPlayer();
                 }

@@ -244,17 +244,20 @@ namespace Ib.Flow
                 "Across the room, the blurred man in The Gallery slowly turns his head.",
                 "Friday morning. Lily touches the canvas. Her fingers stop.",
                 "It is wet.",
-            });
+            }, trueEndCG: true);
         }
 
-        private static void Ending(float fadeOutSeconds, string title, string[] lines)
+        private static void Ending(float fadeOutSeconds, string title, string[] lines, bool trueEndCG = false)
         {
             if (!BeginEnding())
             {
                 return;
             }
 
-            Presentation.FadeToBlack(fadeOutSeconds, () => ShowEndingCard(title, lines));
+            // 真结局：黑屏后先放 CG（TrueEndingCG，4 张静帧 ~29 s），CG 渐黑后再出字幕
+            Presentation.FadeToBlack(fadeOutSeconds, trueEndCG
+                ? () => TrueEndingCG.Play(() => ShowEndingCard(title, lines))
+                : () => ShowEndingCard(title, lines));
         }
 
         /// <summary>先切到 Ending：馆藏全部停下，渐黑 / CG 途中不会被抓。</summary>

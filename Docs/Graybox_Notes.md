@@ -392,3 +392,16 @@
 - 修：`InteractHighlight.cs` 新增接口 `IHighlightSource { Transform HighlightRoot }`，交互物可以指定描边哪部分；`FamilyRoomDoor` 实现它，描边打在门上的锁上。
 - 锁体：`GrayboxBuilder.Batch1102.cs` 的 `BuildFamilyDoorLock`，节点 `Door_Family_Locked/Door_Family_Lock`（`LockPlate` 黄铜 0.04×0.26×0.16、`Keyhole` 用 `M_Keyhole`、`LockKnob`），走廊一面 x = 25.95、z = 14.28（门把手一侧，合页在南）、y = Floor2Y + 1.09，无碰撞体。先按 1 倍坐标建在 FamilyRoom 下再保持世界姿态挂到门板下（门板是非等比缩放的 Cube）。门先删后建，锁跟着重建，幂等。
 - `FamilyRoomDoor` 每帧：`FamilyDoorUnlocked` 为 false 显示锁，true 隐藏（不随检查点回滚）。
+
+## 1F 楼梯天使伏击调整（2026-11-02）
+- 伏击位置不变（`WeepingAngel.TryWaitByStairs`）。
+- 就位时播一声 `Sfx.StoneScrape`（`Sfx.PlayAt`）。
+- 玩家下楼触发伏击（离开楼梯脚等待）后 `ambushGraceSeconds` = 1.5 s 内天使不动；被注视照样冻住。
+- 抓人条件加一条：玩家脚底 y ≤ `groundFloorY + catchFloorMargin`（0.12，最低一级台阶 0.195），在楼梯上不会被抓。
+- 无需重跑生成菜单；影子/剪影可见性未改（需在游戏里确认）。
+
+## 2026-11-02 真结局 CG
+- `Flow/TrueEndingCG.cs`：协程播放器（未装 Timeline）。真结局黑屏后放 4 张静帧（慢推/拉+平移、明暗起伏、1.5 s 交叉淡化，第 4 张手指处 UI 高光扫过），共约 29 s，末尾渐黑后接原有结局字幕。Enter/Esc 跳过。
+- 图：运行时加载 `Resources/CG/TrueEnd/T_CG_TrueEnd_01..04`，缺图用代码生成的占位色块。`Editor/TrueEndingCGImport.cs` 在 `Assets/Art/Incoming/画作/T_CG_TrueEnd_*` 导入时自动拷进 Resources（菜单 Ib/Sync True Ending CG 手动同步）。
+- BGM：`Resources/Audio/BGM_TrueEnd`（钢琴，尚未提供）→ 退回 `Audio/MenuLullaby`。
+- 高光位置（锚点 0.5,0.45）是猜的，真图到了要调。
