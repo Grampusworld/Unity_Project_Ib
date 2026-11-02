@@ -549,10 +549,13 @@ namespace Ib.EditorTools
             Vector3 dir = (target - pos).normalized;
             Quaternion along = Quaternion.FromToRotation(Vector3.up, dir);
 
-            GameObject can = Cylinder(g, "Can", pos - dir * 0.12f, 0.15f, 0.22f, Finishes.MetalDark, false);
-            can.transform.rotation = along;
-            GameObject lens = Cylinder(g, "Lens", pos - dir * 0.005f, 0.12f, 0.01f, Finishes.LampShade, false);
-            lens.transform.rotation = along;
+            // 这里必须用 LocalCylinder：整套灯是局部坐标建的，竣工时根节点再统一 ×WorldScale。
+            // 用 Cylinder（它写的是 world position）只有在生成时（根节点还没缩放）才对，
+            // 在已缩放的场景上补建灯具会错位 —— 2026-11-02 的天使射灯踩过这个坑。
+            GameObject can = LocalCylinder(g, "Can", pos - dir * 0.12f, 0.15f, 0.22f, Finishes.MetalDark);
+            can.transform.localRotation = along;
+            GameObject lens = LocalCylinder(g, "Lens", pos - dir * 0.005f, 0.12f, 0.01f, Finishes.LampShade);
+            lens.transform.localRotation = along;
             lens.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
             AddLampGlow(g.gameObject, lens.GetComponent<Renderer>());
 

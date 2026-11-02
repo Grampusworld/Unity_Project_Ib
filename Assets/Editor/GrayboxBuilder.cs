@@ -153,7 +153,6 @@ namespace Ib.EditorTools
             public Material Black;
             public Material DoorLight;
             public Material SeamGlow;
-            public Material Skylight;
         }
 
         private readonly struct Opening
@@ -314,7 +313,6 @@ namespace Ib.EditorTools
                 Black = GetOrCreateMaterial("M_BlackRoom", new Color(0.012f, 0.012f, 0.014f), 0.05f),
                 DoorLight = GetOrCreateMaterial("M_GB_DoorLight", Color.white, 0f, 4f),
                 SeamGlow = GetOrCreateMaterial("M_GB_SeamGlow", new Color(1f, 0.86f, 0.70f), 0f, 1.0f),
-                Skylight = GetOrCreateMaterial("M_GB_Skylight", new Color(0.55f, 0.65f, 0.8f), 0f, 1.5f),
             };
         }
 
@@ -529,9 +527,7 @@ namespace Ib.EditorTools
             // 和其他厅一样用 Cam_Reception 那套监控模型（SecurityCamera），对着天使
             SecurityCamera(sculpture, "SecurityCamera_Sculpture", new Vector3(13.5f, y + 4.4f, 20.5f), angelPos + Vector3.up * 1.2f);
 
-            GameObject skylight = AddSlab(sculpture, "Skylight_Fake", 17.5f, 21.5f, 13f, 17f,
-                Floor1Height - 0.04f, Floor1Height - 0.005f, p.Skylight);
-            RemoveCollider(skylight);
+            // 2026-11-02：天花板上的假天窗（Skylight_Fake 发光板）删了，照明改成天使头顶一盏真射灯，见 BuildLighting
 
             AddProp(sculpture, "Pickup_CandyWrapper", 24.9f, y, 10.0f, 0.12f, 0.01f, 0.08f, p.Key);
 
@@ -730,8 +726,6 @@ namespace Ib.EditorTools
 
             AddNote(root, "TODO_StairLayout", new Vector3(14.5f, Floor1Y + 3f, 22.5f),
                 "待定：楼梯厅两层都放在北端（二层图为准），\n一层配电间改到雕塑厅南墙", true);
-            AddNote(root, "TODO_Skylight", new Vector3(19.5f, Floor1Height - 0.6f, 15f),
-                "待定：雕塑厅天窗上方是二层长廊，先用发光板假装", true);
             AddNote(root, "TODO_Connections", new Vector3(26f, y1 + 3.6f, 10f),
                 "待定：服装厅西墙开两扇门（接待厅、雕塑厅）", true);
             AddNote(root, "TODO_BackupRoute", new Vector3(19.5f, y1 + 3f, 9.6f),
@@ -1254,14 +1248,72 @@ namespace Ib.EditorTools
             AddRoomLights(deferred, "Duty", DutyWestX, WestLineX, 0f, DutyNorthZ, Floor2Y + c2, false);
             AddRoomLights(deferred, "Toilet", EastLineX, ToiletEastX, 0f, ToiletNorthZ, Floor2Y + c2, false);
 
-            // 天窗冷光，把天使单独打出来（手电与注视的"被照亮"判定以后在这上面调）
-            AddSpotLight(deferred, "Spot_Skylight_Angel", SculptureCenter() + new Vector3(0f, Floor1Height - 0.2f, -0.8f), SculptureCenter() + Vector3.up,
-                new Color(0.70f, 0.80f, 1f), 18f, 11f, 40f, true);
+            // 天使头顶一盏射灯：吊杆 + 灯筒挂在天花下（灯具看得见，光不是凭空来的），冷白垂直打下来。
+            // 原来是用天花板上一块发光板假装天窗，2026-11-02 删掉换成这盏真射灯。
+            AimSpot(deferred, "Spot_Angel", SculptureCenter() + Vector3.up * 4.6f, SculptureCenter() + Vector3.up * 1.6f,
+                0.9f, new Color(0.80f, 0.87f, 1f), true, Floor1Height);
 
             AddPointLight(deferred, "Light_LilyDress_Pink", new Vector3(38.1f, Floor1Y + 1.68f, 2.3f),
                 new Color(1f, 0.55f, 0.72f), 5f, 4f, false, false);
 
             return deferred.gameObject;
+        }
+
+        /// <summary>
+        /// 雕塑厅灯具补丁步骤（重新生成灰盒之后跑一次，也幂等可反复跑）：
+        /// 1. 删掉天花板上的假天窗 Skylight_Fake 和它的待定便签（上面是二层长廊，做不出真天窗）；
+        /// 2. 删掉旧的隐形 Spot_Skylight_Angel；
+        /// 3. 在哭泣天使正上方挂一盏射灯 —— 吊杆 + 灯筒模型放进 Level_Museum/Lamp_Fixtures，
+        ///    Light 放进 Museum_Deferred，和馆内其余灯一起在推门时才亮。
+        /// </summary>
+        [MenuItem("Tools/Ib/雕塑厅：天窗换成天使射灯")]
+        public static void AngelSpotlightMenu()
+        {
+            foreach (string victim in new[] { "Skylight_Fake", "TODO_Skylight", "Spot_Skylight_Angel", "Spot_Angel", "Fixture_Spot_Angel" })
+            {
+                Transform old = FindAnywhere(victim);
+                while (old != null)
+                {
+                    Object.DestroyImmediate(old.gameObject);
+                    old = FindAnywhere(victim);
+                }
+            }
+
+            Transform deferred = FindAnywhere("Museum_Deferred");
+            if (deferred == null)
+            {
+                Debug.LogError("[GrayboxBuilder] 找不到 Museum_Deferred，天使射灯没加。");
+                return;
+            }
+
+            if (lampFixtures == null)
+            {
+                lampFixtures = FindAnywhere("Lamp_Fixtures");
+            }
+
+            if (Finishes == null)
+            {
+                // 灯具要用 Finishes.MetalDark / LampShade；新会话里静态字段是空的，先按资产加载一遍
+                LoadFinishes();
+            }
+
+            AimSpot(deferred, "Spot_Angel", SculptureCenter() + Vector3.up * 4.6f, SculptureCenter() + Vector3.up * 1.6f,
+                0.9f, new Color(0.80f, 0.87f, 1f), true, Floor1Height);
+
+            // Light 的 range / 亮度不受 Transform 缩放影响，ApplyWorldScale 是 range ×S、亮度 ×S²。
+            // 这一步骤是在已经放大的场景上跑的，所以这里按当前实际缩放补一遍（没放大过就自动是 1 倍，不重复补）。
+            Transform scaleRef = lampFixtures != null ? lampFixtures : deferred;
+            float s = scaleRef != null ? scaleRef.lossyScale.x : 1f;
+            Transform created = FindAnywhere("Spot_Angel");
+            Light spot = created != null ? created.GetComponent<Light>() : null;
+            if (spot != null)
+            {
+                spot.range *= s;
+                spot.intensity *= s * s;
+            }
+
+            EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+            Debug.Log("[GrayboxBuilder] 雕塑厅：假天窗已删，天使头顶射灯已布置（Spot_Angel，range ×" + s.ToString("F2") + "）。");
         }
 
         private static readonly Color WarmLight = new Color(1f, 0.92f, 0.82f);
@@ -1330,7 +1382,8 @@ namespace Ib.EditorTools
             GameObject go = new GameObject(name);
             go.transform.SetParent(parent, false);
             go.transform.localPosition = position;
-            go.transform.LookAt(target);
+            // 朝向也用局部坐标算：整个馆竣工时会 ×WorldScale，在已缩放的场景上补建灯时 LookAt(世界坐标) 会指歪
+            go.transform.localRotation = Quaternion.LookRotation(target - position);
 
             Light light = go.AddComponent<Light>();
             light.type = LightType.Spot;
@@ -1458,10 +1511,10 @@ namespace Ib.EditorTools
             List<Bounds> fixtures = new List<Bounds>();
             foreach (Renderer r in Object.FindObjectsByType<Renderer>(FindObjectsInactive.Include))
             {
-                // 只认小物件（灯罩、射灯筒、出口灯牌……），墙和天花板不算；天窗发光板例外
+                // 只认小物件（灯罩、射灯筒、出口灯牌……），墙和天花板不算
                 Bounds b = r.bounds;
                 float size = Mathf.Max(b.size.x, Mathf.Max(b.size.y, b.size.z));
-                if (size > 1.2f && r.name != "Skylight_Fake")
+                if (size > 1.2f)
                 {
                     continue;
                 }
