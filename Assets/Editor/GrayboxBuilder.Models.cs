@@ -429,7 +429,11 @@ namespace Ib.EditorTools
         {
             Transform g = NewGroup(parent, name, baseCenter, 0f);
             AddBox(g, "Plinth", new Vector3(0f, plinthH * 0.5f, 0f), new Vector3(size.x, plinthH, size.z), Finishes.Wainscot);
-            LocalBox(g, "Plinth_Trim", new Vector3(0f, plinthH - 0.02f, 0f), new Vector3(size.x + 0.03f, 0.04f, size.z + 0.03f), Finishes.Brass);
+            // 黄铜压条：包底座上沿一圈。顶面必须比底座顶面低 8 mm —— 两者齐平时整片底座顶面（2.3 × 2.3 m）
+            // 就是两片同向共面，玩家一移动木纹和黄铜交替闪（z-fighting）。压条比底座大 3 cm，降下去只剩外沿一圈可见。
+            const float trimH = 0.04f;
+            const float trimDrop = 0.008f;
+            LocalBox(g, "Plinth_Trim", new Vector3(0f, plinthH - trimDrop - trimH * 0.5f, 0f), new Vector3(size.x + 0.03f, trimH, size.z + 0.03f), Finishes.Brass);
 
             float gh = size.y - plinthH;
             GameObject glass = AddBox(g, "Glass", new Vector3(0f, plinthH + gh * 0.5f, 0f), new Vector3(size.x - 0.02f, gh, size.z - 0.02f), Finishes.GlassClear);

@@ -23,6 +23,12 @@ namespace Ib.Core
         private const float SmoothSpeed = 3f;
 
         private static MuseumBgm instance;
+
+        /// <summary>
+        /// 0..1：BGM 自己的淡入包络（volume / MaxVolume，未乘音乐音量、未压心跳）。
+        /// 人群声用它做同一个起点、同一条淡入（老大 2026-11-02）；MainMenu / 本局 BGM 停掉后为 0。
+        /// </summary>
+        public static float Envelope => instance != null && !finishedForRun ? Mathf.Clamp01(instance.volume / MaxVolume) : 0f;
         private static bool finishedForRun;
 
         private AudioSource source;
@@ -98,6 +104,7 @@ namespace Ib.Core
 
             if (GameFlow.State == GameState.MainMenu)
             {
+                volume = 0f;
                 source.volume = 0f;
                 return;
             }

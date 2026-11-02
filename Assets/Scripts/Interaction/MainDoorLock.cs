@@ -12,7 +12,9 @@ namespace Ib.Interaction
     /// 只想走真结局的玩家不要来碰门，直接回二楼全家福）。
     /// 碰撞体是贴在门内侧的一块薄板，序章时关掉，免得挡住推门（DoubleDoor 自己的交互）。
     /// 锁片挂在门的根节点上、不跟门板转，所以只在门关着、并且已经进过馆（大门被 MuseumEntrance 关死以后）才显示；
-    /// 推门开着的那段时间不显示，不然会悬在门洞里。
+    /// 推门开着的那段时间不显示，不然会悬在门洞里。2026-11-02 修：以前只藏 LockPlate，锁孔 / 锁舌 / 锁扣
+    /// （「布置正门钥匙」加的兄弟节点）照样渲染，门一开就悬空；现在锁根下所有 Renderer 一起开关，
+    /// 碰撞体（交互）也只在门关着时打开。每帧按当前状态对一次，重生 / 读档自然是对的。
     /// 插钥匙动画约 1.75 s（老大 2026-11-01）：镜头凑到锁前，钥匙滑进锁孔、拧 90°，锁舌缩回去，咔哒一声，镜头退回。
     /// 动画期间 Time.timeScale = 0（老大 2026-11-02），但保留咔哒声，所以用 unscaled 时间推进。
     /// 钥匙模型 / 锁舌由「布置正门钥匙」菜单换上（keyVisual = MainDoorKey 实例）。
@@ -39,9 +41,10 @@ namespace Ib.Interaction
         private bool animating;
 
         private Collider[] colliders;
+        private Renderer[] lockRenderers;   // 锁根下除钥匙以外的所有 Renderer（锁片、锁孔、锁舌、锁扣）
         private DoubleDoor door;
 
-        public string Prompt => !GameFlow.HasKey ? "Push" : GameFlow.KeyInserted ? "Open" : "Insert key";
+        public string Prompt => !GameFlow.HasKey ? "Locked" : GameFlow.KeyInserted ? "Open" : "Insert key";
 
         public InteractKind Kind => InteractKind.Door;
 
@@ -70,6 +73,17 @@ namespace Ib.Interaction
             {
                 boltLocked = bolt.localPosition;
             }
+
+            var list = new System.Collections.Generic.List<Renderer>();
+            foreach (Renderer r in GetComponentsInChildren<Renderer>(true))
+            {
+                if (keyVisual == null || !r.transform.IsChildOf(keyVisual.transform))
+                {
+                    list.Add(r);
+                }
+            }
+
+            lockRenderers = list.ToArray();
         }
 
         private void OnEnable()
@@ -82,26 +96,37 @@ namespace Ib.Interaction
 
         private void OnStateChanged(GameState from, GameState to) => Apply();
 
-        private void Apply()
-        {
-            bool on = InRealMuseum;
-            foreach (Collider c in colliders)
-            {
-                c.enabled = on;
-            }
-
-            ApplyVisuals();
-        }
+        private void Apply() => ApplyVisuals();
 
         // 门是 MuseumEntrance 瞬间关上的，没有事件，每帧对一下
         private void LateUpdate() => ApplyVisuals();
 
+        private bool DoorClosed => door == null || door.IsClosed;
+
         private void ApplyVisuals()
         {
-            bool shown = GameFlow.State >= GameState.PaintedGallery && (door == null || door.IsClosed);
+            // 交互：真实馆里、门关着（插钥匙动画期间保持）
+            bool on = InRealMuseum && (DoorClosed || animating);
+            foreach (Collider c in colliders)
+            {
+                if (c.enabled != on)
+                {
+                    c.enabled = on;
+                }
+            }
+
+            bool shown = GameFlow.State >= GameState.PaintedGallery && DoorClosed;
             if (lockVisual != null && lockVisual.activeSelf != shown)
             {
                 lockVisual.SetActive(shown);
+            }
+
+            foreach (Renderer r in lockRenderers)
+            {
+                if (r != null && r.enabled != shown)
+                {
+                    r.enabled = shown;
+                }
             }
 
             bool key = shown && (GameFlow.KeyInserted || animating);
@@ -122,6 +147,7 @@ namespace Ib.Interaction
             {
                 Sfx.PlayAt(Sfx.LockRattle, transform.position, 0.9f);
                 SceneTransitions.TriedLockedMainDoor();
+                Captions.Show("C_LockedDoor");
                 return;
             }
 

@@ -8,8 +8,9 @@ namespace Ib.Core
     /// <summary>
     /// 人群声 + 环境底噪 + 二楼厕所异响（老大 2026-11-01）。场景里不用摆：
     /// RuntimeInitializeOnLoadMethod 在场景加载后自己生成，素材在 Resources/Audio（Ib 美术，见 Docs/Ambient_Audio.md）。
-    /// - CrowdMurmur：只在 NPC_Crowd 显示时循环（WorldState：GameState &lt;= PaintedGallery）。进画中馆 1.5 s 淡入，
-    ///   人群消失 / 场景切换 2 s 淡出后停，之后不再响。
+    /// - CrowdMurmur：只在 NPC_Crowd 显示时循环（WorldState：GameState &lt;= PaintedGallery）。
+    ///   淡入跟 MuseumBgm 走同一条包络（老大 2026-11-02）：音量 = CrowdVolume × MuseumBgm.Envelope，
+    ///   开局在黑屋出生点是 0，随玩家走向大门和 BGM 一起从 0 升起；人群消失 / 场景切换 2 s 淡出后停，之后不再响。
     /// - AmbientRoomTone：全程轻声铺底。断电时 3.5 s 交叉淡化到 AmbientRoomTone_PowerOut（素材没有就继续原版）。
     ///   主菜单不播，结局 CG 保留（GDD 要求过场保留环境音），Game Over 2 s 淡出，暂停由 AudioListener.pause 停住。
     /// - ToiletNoise：接完电话后从二楼厕所 CP2_Flashlight_Toilet 播一次（3D、1500 Hz 低通做隔墙感），
@@ -20,7 +21,6 @@ namespace Ib.Core
     public sealed class AmbientAudio : MonoBehaviour
     {
         private const float CrowdVolume = 0.55f;
-        private const float CrowdFadeIn = 1.5f;
         private const float CrowdFadeOut = 2f;
         private const float RoomToneVolume = 0.28f;
         private const float RoomTonePowerOutVolume = 0.22f;
@@ -118,15 +118,21 @@ namespace Ib.Core
                 && WorldState.Crowd != null
                 && WorldState.Crowd.activeInHierarchy;
 
-            float target = want ? CrowdVolume : 0f;
-            float speed = dt / (want ? CrowdFadeIn : CrowdFadeOut);
-            crowd.volume = Mathf.MoveTowards(crowd.volume, target * AudioMix.Effects, speed * CrowdVolume);
+            if (want)
+            {
+                // 和 BGM 同一个起点、同一条淡入：直接跟 BGM 的包络（MuseumBgm 已经每帧平滑过，不会跳变）
+                crowd.volume = CrowdVolume * MuseumBgm.Envelope * AudioMix.Effects;
+            }
+            else
+            {
+                crowd.volume = Mathf.MoveTowards(crowd.volume, 0f, dt / CrowdFadeOut * CrowdVolume);
+            }
 
             if (crowd.volume <= 0.0005f && crowd.isPlaying && !want)
             {
                 crowd.Stop();
             }
-            else if (want && !crowd.isPlaying)
+            else if (want && !crowd.isPlaying && crowd.volume > 0.0005f)
             {
                 crowd.Play();
             }

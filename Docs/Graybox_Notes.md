@@ -322,3 +322,73 @@
 - 文本收集编号：`TextCatalog`（在 `TextDocument.cs`）按 T 编号排 19 份，阅读器左上角显示「No. n / 19」，暂停菜单 Texts 页标题显示已读数 / 19，列表按编号排并带两位编号。新增文本要补进 `TextCatalog.Order`。
 - 备份：`Docs/Backup/2026-11-01_before_fix7/`。
 - （同日更正）名画人物 jump scare 改走 `AngelJumpScare.PlayFace`：按眼白/瞳孔子网格顶点找眼睛和脸朝向，把整尊转成正脸对镜头；演出期间相机只渲染第 31 层（纯黑背景，等于一段固定 CG）；近裁剪面推到鼻尖前，切掉垂在脸前的头发。为此 `Girl.fbx` 导入设置打开了 Read/Write（`isReadable: 1`）。
+
+## 2026-11-02 第五批：黑屋画交互 / Lily 下移 / 笔触法线 / 全家福厅门锁
+
+菜单：`Tools/Ib/布置 11-02 改动（黑屋画、Lily 下移、脸部笔触法线、全家福厅门锁）`（`Assets/Editor/GrayboxBuilder.Batch1102.cs` 的 `SetupBatch1102`）。生成灰盒的最后一步也会调用；按名字找、幂等，重复执行结果一致。
+
+### 黑屋全家福草稿可交互
+- `GrayboxBuilder.Batch1102.cs`：`Level_BlackRoom/FamilyPortraitSketch_Easel` 上 `Ensure<InspectCaption>`，用 SerializedObject 把 `captionId` 设成 `C_BlackRoomPortrait`。
+- 新增 `Assets/Scripts/Interaction/InspectCaption.cs`（`Ib.Interaction`）：Prompt "Look"、Kind `Painting`、不锁输入、0.5 s 防连按。画架子物体 `Canvas` 自带 BoxCollider，准星命中后由 `PlayerInteractor` 用 `GetComponentInParent` 找到组件。
+- 新增 `Assets/Scripts/UI/Captions.cs`（`Ib.UI`）：`Captions.Get(id)` 读 `Resources/Texts/<id>` 的 `body`（缺失返回 null 并只警告一次）；`Captions.Show(id, seconds = 3.5)` 转给 `Presentation.ShowCaption`。
+- 新增 `Assets/Resources/Texts/C_BlackRoomPortrait.asset`。`C_` 开头的不是收集文本：不进 `TextCatalog`、不写 `Presentation.ReadTexts`；暂停菜单 Texts 页只遍历 `ReadTexts`，所以不会列出来。
+
+### Lily 肖像下移（老大 11-02）
+- 坐标口径：`Props_Museum` 下 `localPosition.y` **7.8 → 7.4**（1 倍单位，差 0.4）；世界坐标 ×1.4 后 **10.92 → 10.36**（下移 0.56 m）。
+- 全量生成：`GrayboxBuilder.cs` 的 `BuildProps2F` 里 `Sketch_LilyLooksAtDoor` 从 `y + 1.4f` 改成 `y + 1.0f`。
+- 增量：按目标 y 反推 `dy`（第二次运行 dy ≈ 0，直接跳过）；`Sketch_LilyLooksAtDoor` 本体 `localPosition.y += dy`，`Sketch_LilyLooksAtDoor_Frame` 的每个子物体、`Sketch_LilyLooksAtDoor_Portrait` 组同步加 dy（三者父节点都是 `Props_Museum/2F/Gallery`）。
+- 灯：`--- Lighting ---` 下的 `Spot_Gallery_Sketch_LilyLooksAtDoor` 也 `localPosition.y += dy`，然后对画板新的 `Renderer.bounds.center` 重新 `LookAt`。`Level_Museum/Lamp_Fixtures/Fixture_Spot_Gallery_Sketch_LilyLooksAtDoor` 挂在天花上，不动；只有灯的瞄准变了。
+
+### 游客模糊脸的笔触法线
+- `GrayboxBuilder.Batch1102.cs` 新增 `FaceBrushNormalTexture` / `FaceBrushHeight` / `FaceHeightToNormal` / `ApplyFaceBrushNormal`；`BuildVisitors`（`GrayboxBuilder.Exhibition.cs`）建完两张脸材质后调用，所以 `Tools/Ib/布置展厅细节` 菜单也会生效。
+- 材质：`Assets/Art/Materials/Finish/M_Visitor_Face_A.mat` 和 `_B.mat`，设 `_BumpMap`、`_BumpScale = 0.8`（`FaceBrushNormalStrength`）、开 `_NORMALMAP`，tiling / offset 跟 `_BaseMap` 一致。Ted 的 `M_Ted_Face` 不动。
+- 程序生成的图：`Assets/Art/Textures/Faces/T_VisitorFace_BrushProc_N.png`，512×256、RGB24、固定种子 1102。高度场只在脸部涂抹区（球面 UV 脸中心 u = 0.75；像素上 x = cx ± 70、y = cy − 62..cy + 68，边缘羽化）叠 20 条横向为主、略带斜度（约 ±10°）的笔刷条；每条长 30–120 px、宽 4–10 px，两端渐细、中心略隆起，条内是垂直笔触方向的高频刷毛细纹；脸外只剩极弱的布纹。
+- **法线贴图交付规格**：路径 `Assets/Art/Textures/Faces/T_VisitorFace_Brush_N.png`；512×256，与脸 albedo（`T_VisitorFace_A/B.png`）同一套 UV 布局（Unity 球面 UV，脸中心 u = 0.75、v = 0.5）；PNG 8bit RGB；切线空间、OpenGL 约定（绿通道 Y+，Unity 默认）；只在脸部涂抹区有笔触，其余平坦 `(128,128,255)`；横向（u）可平铺、纵向（v）不需要。文件放进来后重跑菜单即可：导入类型自动设为 NormalMap、wrapU Repeat / wrapV Clamp，替换程序生成的那张。
+- 注意：`Materials.cs` 的 `HeightToNormal` 固定按 `TexSize × TexSize`（512²）且双向 wrap；脸是 512×256、v 向 Clamp，所以 Batch1102 里照同一公式写了带尺寸的 `FaceHeightToNormal`。
+
+### 全家福厅门锁
+- 门洞：二层东线 `x = EastLineX (26)`、`z = FamilyDoorZ (13.5)`，宽 `FamilyDoorWidth (2.0)`、高 `FamilyDoorHeight (3.0)`、地面 `Floor2Y (6.4)`；门板厚 0.1、x 26 ± 0.05、z 12.5–14.5（1 倍坐标）。
+- 生成：`GrayboxBuilder.cs` 的 `BuildProps2F` 的 FamilyRoom 段落建 `Door_Family_Locked`（材质同 `p.Door`，即 `Palette.Door` / `LoadPalette().Door`）+ `FamilyRoomDoor`；增量菜单在 `Props_Museum/2F/FamilyRoom` 下先删同名再建，不重复。
+- 新增 `Assets/Scripts/Interaction/FamilyRoomDoor.cs`（`Ib.Interaction`，`IInteractable`，Kind Door）：合页 = 门板南侧竖边，向全家福厅 +X 开 90°，关闭姿态 = 场景摆放姿态；门宽 / 厚度 / 底边从 `Renderer.bounds` 算（和 `MagLockDoor` 同一套写法）。
+- `Assets/Scripts/Flow/GameFlow.cs` 新增 `FamilyDoorUnlocked`（不随检查点回滚，和 `HasKey` 一样），加载场景时一起清 false。
+- 新增 `Assets/Resources/Texts/C_LockedDoor.asset`；`MainDoorLock` 没钥匙时 Prompt 从 "Push" 改成 "Locked"，并在 `TriedLockedMainDoor` 之后加 `Captions.Show("C_LockedDoor")`。
+
+门的状态表（`monitorsDone` = `SecurityMonitors` 不存在或 `Playing == false`）：
+
+| 条件 | 门 |
+| --- | --- |
+| State < AngelsActive | 开（瞬间） |
+| State == AngelsActive 且监控过场在放 | 开（等放完再关） |
+| State == AngelsActive 且监控过场刚由 true → false | 0.25 s 猛关 + `DoorSlam`；玩家在门洞内侧 2.2 m 内、全家福厅一侧时推迟到离开 |
+| State == AngelsActive 且过场放完、未解锁 | 关（锁住，挡人） |
+| 有钥匙按 E | `KeyClick` → `FamilyDoorUnlocked = true` → 2 s 缓开 + `DoorCreak`；钥匙不消耗 |
+| 没钥匙按 E | `LockRattle` + 字幕 `C_LockedDoor` |
+| FamilyDoorUnlocked | 开（读档 / 重生也保持） |
+| State == Ending | 保持当前姿态 |
+
+
+## 2026-11-02 第六批：人群声跟 BGM 淡入 / 正门锁悬空 / 配电室门缝 / 全家福厅门高亮 + 锁
+
+备份：`/tmp/ib/before6/`。菜单：仍是 `Tools/Ib/布置 11-02 改动（黑屋画、Lily 下移、脸部笔触法线、全家福厅门锁）`（只有第 4 项的锁体要跑菜单，其余是运行时脚本）。
+
+### 1. 人群声不再开局就响
+- BGM（`Core/MuseumBgm.cs`）：MainMenu 不播；进 BlackRoom 后目标音量 = 0.5 × SmoothStep(1 − 玩家到大门距离 / 出生点到大门距离)，每帧指数平滑（3/s）；PaintedGallery 起满音量。
+- 原来 `AmbientAudio` 的 CrowdMurmur 一离开 MainMenu 就 1.5 s 淡到 0.55，所以开局在黑屋就听到嘈杂声。
+- 现在：`MuseumBgm.Envelope`（= volume / MaxVolume，0..1，不含音乐音量和心跳压低）；人群音量 = 0.55 × Envelope × Effects 音量，同一起点、同一条曲线。淡出（人群消失 / 状态越过 PaintedGallery）仍是 2 s。删掉 `CrowdFadeIn`。
+
+### 2. MainDoor_Lock 悬空
+- 根因：`MainDoorLock` 只开关 `LockPlate`，「布置正门钥匙」加的 `Keyhole` / `Bolt` / `BoltKeeper` 是锁根下的兄弟节点，一直渲染，门开着就悬在门洞里。
+- 修：Awake 收集锁根下除钥匙外的所有 Renderer，每帧 LateUpdate 按「State ≥ PaintedGallery 且门关着」开关 `Renderer.enabled`；碰撞体（交互）改成「真实馆里 且 门关着（插钥匙动画期间保持）」。状态驱动，重生 / 读档自然正确。
+
+### 3. 配电室门
+- 生成器（`GrayboxBuilder.Wayfinding.cs`）里门轴 `PowerRoom_DoorHinge` 是 0°（关）；以前是运行时 `PowerRoomDoor` 开局就摆成 26° 虚掩。
+- 现在三段：关 0° → 监控过场 `SecurityMonitors.Playing` true→false 时 3 s 缓开到 15° + `DoorCreak` → 推门或拿到工作卡 1.5 s 开到 92° + `PowerRoomDoorOpen`。
+- 15° 门缝世界宽约 0.4 m，人过不去，而工作卡柜在配电室里（`StaffCardCabinet` 只在 AngelsActive 可拿），所以新增 `Interaction/PowerRoomDoorPush.cs`（运行时挂到 `PowerRoom_Door` 门板上，门板自带 BoxCollider）：门缝状态按 E「Push」推到全开。
+- 重生 / 读档：HasStaffCard → 92°；State ≥ AngelsActive 且过场不在放 → 15°（本局推开过 → 92°）；否则 0°。回滚到 AngelsActive 之前的检查点会清掉「推开过」。
+
+### 4. 全家福厅门不高亮 + 锁
+- 高亮机制：`PlayerInteractor` 细球扫 → `GetComponentInParent<IInteractable>` → `InteractHighlight` 给目标的 MeshRenderer 套一层沿法线挤出 0.03 m、只画背面的壳（ZTest 正常）。便签 / 正门锁片都凸在外面，壳的边缘露得出来。
+- 根因：`Door_Family_Locked` 碰撞体、layer、组件都正常（准星能命中、CanInteract 为真），但门板 0.1 厚、正好填满门洞、缩在 0.3 厚墙的中间，壳只在四周露边，四周全埋在墙 / 门套里被深度挡掉，正面的挤出又是正面被剔除 → 屏幕上什么都看不到。
+- 修：`InteractHighlight.cs` 新增接口 `IHighlightSource { Transform HighlightRoot }`，交互物可以指定描边哪部分；`FamilyRoomDoor` 实现它，描边打在门上的锁上。
+- 锁体：`GrayboxBuilder.Batch1102.cs` 的 `BuildFamilyDoorLock`，节点 `Door_Family_Locked/Door_Family_Lock`（`LockPlate` 黄铜 0.04×0.26×0.16、`Keyhole` 用 `M_Keyhole`、`LockKnob`），走廊一面 x = 25.95、z = 14.28（门把手一侧，合页在南）、y = Floor2Y + 1.09，无碰撞体。先按 1 倍坐标建在 FamilyRoom 下再保持世界姿态挂到门板下（门板是非等比缩放的 Cube）。门先删后建，锁跟着重建，幂等。
+- `FamilyRoomDoor` 每帧：`FamilyDoorUnlocked` 为 false 显示锁，true 隐藏（不随检查点回滚）。

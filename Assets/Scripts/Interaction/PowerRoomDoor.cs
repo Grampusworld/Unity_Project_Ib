@@ -6,19 +6,24 @@ using UnityEngine.SceneManagement;
 namespace Ib.Interaction
 {
     /// <summary>
-    /// 配电室门（老大 2026-11-01）：拿到保安柜里的工作卡（老大口中的「钥匙」）时，
-    /// 门板绕 <c>PowerRoom_DoorHinge</c> 平滑打开，同一帧起播 <c>PowerRoomDoorOpen</c>。
-    /// 门平时虚掩 26°：玩家倒着退进配电室时不用先停下来开门，门本身也一直看得见；
-    /// 拿到卡后 1.5 s 开到 92° 并保持。场景里不用挂组件：场景加载后自己生成，
-    /// 按节点名找门轴（由 GrayboxBuilder.Wayfinding 生成）。老场景没有这扇门时静默降级，不报错。
+    /// 配电室门（老大 2026-11-01，2026-11-02 改）。场景里不用挂组件：场景加载后自己生成，
+    /// 按节点名找门轴 <c>PowerRoom_DoorHinge</c>（GrayboxBuilder.Wayfinding 生成，生成时 0° = 关）。老场景没有这扇门时静默降级。
+    /// 三段：
+    /// - 关（0°）：开局一直关着。
+    /// - 门缝（15°）：值班室监控过场 SecurityMonitors.Playing 由 true 变 false 那一刻，3 s 缓缓开一条缝 + DoorCreak。
+    ///   缝只有约 0.4 m，人过不去，所以门板上挂 PowerRoomDoorPush：按 E「Push」推到全开（工作卡在配电室里面，流程要求进去）。
+    /// - 全开（92°）：推开，或拿到工作卡（调试传送 / 读档）。1.5 s + PowerRoomDoorOpen。
+    /// 重生 / 读档按当前状态瞬间摆好：HasStaffCard → 全开；State ≥ AngelsActive 且过场不在放 → 门缝（本局推开过就全开）；否则关。
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class PowerRoomDoor : MonoBehaviour
     {
         private const string HingeName = "PowerRoom_DoorHinge";
-        private const string CreakClip = "PowerRoomDoorOpen";
-        private const float AjarAngle = 26f;    // 虚掩：门缝约 0.7 m，玩家侧身能过
+        private const string LeafName = "PowerRoom_Door";
+        private const string OpenClip = "PowerRoomDoorOpen";
+        private const float AjarAngle = 15f;    // 门缝：约 0.4 m（世界），玩家过不去，要推
         private const float OpenAngle = 92f;    // 朝雕塑厅（+Z）外开，贴到门洞西侧
+        private const float AjarSeconds = 3f;
         private const float OpenSeconds = 1.5f;
         private const float CreakVolume = 0.8f;
         private const float FindInterval = 0.5f;
@@ -26,21 +31,24 @@ namespace Ib.Interaction
         private static PowerRoomDoor instance;
 
         private Transform hinge;
-        private float angle = AjarAngle;
-        private float progress;
+        private SecurityMonitors monitors;
+        private float angle;
+        private float fromAngle, toAngle, progress, seconds;
+        private bool moving;
+        private bool pushed;          // 本局推开过（检查点回到 AngelsActive 之前会清掉）
+        private bool wasPlaying;
         private float nextFind;
-        private bool opening;
-        private bool opened;
         private bool warned;
 
-        /// <summary>门轴当前角度（0 = 关，92 = 全开），自检用。</summary>
+        /// <summary>门轴当前角度（0 = 关，15 = 门缝，92 = 全开），自检用。</summary>
         public float Angle => angle;
 
-        /// <summary>正在播开门动画。</summary>
-        public bool IsOpening => opening;
+        public bool IsOpening => moving;
 
-        /// <summary>已经开到最大。</summary>
-        public bool IsOpen => opened;
+        public bool IsOpen => !moving && angle >= OpenAngle - 0.5f;
+
+        /// <summary>开着一条缝、没在动：可以推。</summary>
+        public bool CanPush => !moving && angle > 0.5f && angle < OpenAngle - 0.5f;
 
         /// <summary>开门声的声源（素材缺失时为 null）。</summary>
         public AudioSource Creak { get; private set; }
@@ -48,6 +56,19 @@ namespace Ib.Interaction
         public Transform Hinge => hinge;
 
         public static PowerRoomDoor Instance => instance;
+
+        private bool MonitorsPlaying
+        {
+            get
+            {
+                if (monitors == null)
+                {
+                    monitors = FindAnyObjectByType<SecurityMonitors>();
+                }
+
+                return monitors != null && monitors.Playing;
+            }
+        }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void Init()
@@ -72,16 +93,31 @@ namespace Ib.Interaction
             instance = new GameObject("--- PowerRoomDoor ---").AddComponent<PowerRoomDoor>();
         }
 
-        private void Awake()
-        {
-            instance = this;
+        private void Awake() => instance = this;
 
-            // 读档 / 调试直接带着工作卡进场景：门直接给到全开，不补播动画
-            if (GameFlow.HasStaffCard)
+        private void OnEnable() => GameOverScreen.Continued += OnRespawn;
+
+        private void OnDisable() => GameOverScreen.Continued -= OnRespawn;
+
+        /// <summary>按当前状态应该停在的角度（不含动画）。</summary>
+        private float StateAngle()
+        {
+            if (GameFlow.HasStaffCard || (pushed && GameFlow.State >= GameState.AngelsActive))
             {
-                angle = OpenAngle;
-                opened = true;
+                return OpenAngle;
             }
+
+            return GameFlow.State >= GameState.AngelsActive && !MonitorsPlaying ? AjarAngle : 0f;
+        }
+
+        private void OnRespawn()
+        {
+            if (GameFlow.State < GameState.AngelsActive)
+            {
+                pushed = false;
+            }
+
+            Snap(StateAngle());
         }
 
         private void Update()
@@ -107,44 +143,93 @@ namespace Ib.Interaction
                 }
 
                 hinge = go.transform;
-                Apply(angle);
+                Transform leaf = hinge.Find(LeafName);
+                if (leaf != null && leaf.GetComponent<PowerRoomDoorPush>() == null)
+                {
+                    leaf.gameObject.AddComponent<PowerRoomDoorPush>();
+                }
+
+                // 场景加载 / 读档：直接摆到当前状态，不播动画
+                wasPlaying = MonitorsPlaying;
+                Snap(StateAngle());
             }
 
-            // 拿到工作卡（不管是保安柜交互、调试传送还是读档）→ 开门
-            if (!opening && !opened && GameFlow.HasStaffCard)
+            bool playing = MonitorsPlaying;
+            bool monitorsJustEnded = wasPlaying && !playing;
+            wasPlaying = playing;
+
+            if (!moving)
             {
-                Open();
+                float target = StateAngle();
+                if (target > angle + 0.5f)
+                {
+                    if (target >= OpenAngle)
+                    {
+                        BeginMove(OpenAngle, OpenSeconds, OpenClip);   // 拿到工作卡（调试传送等）
+                    }
+                    else if (monitorsJustEnded || GameFlow.State >= GameState.AngelsActive)
+                    {
+                        BeginMove(AjarAngle, AjarSeconds, Sfx.DoorCreak);   // 看完监控：缓缓开一条缝
+                    }
+                }
             }
 
-            if (!opening)
+            if (!moving)
             {
                 return;
             }
 
-            progress = Mathf.Min(1f, progress + Time.deltaTime / OpenSeconds);
-            angle = Mathf.Lerp(AjarAngle, OpenAngle, Mathf.SmoothStep(0f, 1f, progress));
+            progress = Mathf.Min(1f, progress + Time.deltaTime / seconds);
+            angle = Mathf.Lerp(fromAngle, toAngle, Mathf.SmoothStep(0f, 1f, progress));
             Apply(angle);
 
             if (progress >= 1f)
             {
-                opening = false;
-                opened = true;
-                Debug.Log($"[PowerRoomDoor] 全开：{OpenAngle:F0}°，用时 {OpenSeconds:F1} s", this);
+                moving = false;
+                Debug.Log($"[PowerRoomDoor] 到位：{toAngle:F0}°", this);
             }
         }
 
-        /// <summary>开始开门（重复调用无效）。</summary>
-        public void Open()
+        /// <summary>玩家按 E 推门：从门缝推到全开（PowerRoomDoorPush 调用）。</summary>
+        public void Push()
         {
-            if (opening || opened)
+            if (!CanPush)
             {
                 return;
             }
 
-            opening = true;
+            pushed = true;
+            BeginMove(OpenAngle, OpenSeconds, OpenClip);
+        }
+
+        /// <summary>兼容旧调用：直接开到全开。</summary>
+        public void Open()
+        {
+            if (moving || IsOpen)
+            {
+                return;
+            }
+
+            pushed = true;
+            BeginMove(OpenAngle, OpenSeconds, OpenClip);
+        }
+
+        private void BeginMove(float target, float duration, string clip)
+        {
+            fromAngle = angle;
+            toAngle = target;
             progress = 0f;
-            PlayCreak();
-            Debug.Log($"[PowerRoomDoor] 拿到工作卡 → 开门动画开始（{AjarAngle:F0}° → {OpenAngle:F0}°，{OpenSeconds:F1} s）", this);
+            seconds = Mathf.Max(0.01f, duration);
+            moving = true;
+            PlayCreak(clip);
+            Debug.Log($"[PowerRoomDoor] 开门 {fromAngle:F0}° → {toAngle:F0}°（{seconds:F1} s）", this);
+        }
+
+        private void Snap(float degrees)
+        {
+            moving = false;
+            angle = degrees;
+            Apply(angle);
         }
 
         private void Apply(float degrees)
@@ -155,14 +240,14 @@ namespace Ib.Interaction
             }
         }
 
-        private void PlayCreak()
+        private void PlayCreak(string clipName)
         {
             if (hinge == null)
             {
                 return;
             }
 
-            AudioClip clip = Sfx.Load(CreakClip);
+            AudioClip clip = Sfx.Load(clipName);
             if (clip == null)
             {
                 return;   // 素材没到：静音开门，不报错

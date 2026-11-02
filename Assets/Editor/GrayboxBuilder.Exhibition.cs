@@ -75,6 +75,18 @@ namespace Ib.EditorTools
                 VisitorMaterial("M_Visitor_Face_A", PaintFace("T_VisitorFace_A", true, new Color(0.82f, 0.72f, 0.62f), new Color(0.22f, 0.17f, 0.13f), 11)),
                 VisitorMaterial("M_Visitor_Face_B", PaintFace("T_VisitorFace_B", true, new Color(0.76f, 0.66f, 0.58f), new Color(0.42f, 0.38f, 0.34f), 23)),
             };
+
+            // 2026-11-02：抹开的脸再补一层"没干油彩"的笔触法线（美术交付的 T_VisitorFace_Brush_N.png 优先，没有就程序生成）。
+            // Lit() 只在新建材质时设置法线，已有的 M_Visitor_Face_A/B 必须在这里补。
+            Texture2D brushNormal = FaceBrushNormalTexture();
+            if (brushNormal != null)
+            {
+                foreach (Material face in faces)
+                {
+                    ApplyFaceBrushNormal(face, brushNormal, FaceBrushNormalStrength);
+                }
+            }
+
             Color[] cloth =
             {
                 new Color(0.2f, 0.2f, 0.22f), new Color(0.22f, 0.25f, 0.32f), new Color(0.33f, 0.33f, 0.27f),

@@ -5,6 +5,15 @@ using UnityEngine.Rendering;
 namespace Ib.Interaction
 {
     /// <summary>
+    /// 交互物自己指定描边哪部分（2026-11-02）。嵌在门洞里的门板四周的挤出壳全埋在墙 / 门套里，看不见，
+    /// 这种物体把描边交给露在外面的部件（全家福厅门 → 门上的锁）。返回 null 或未激活时按默认规则描。
+    /// </summary>
+    public interface IHighlightSource
+    {
+        Transform HighlightRoot { get; }
+    }
+
+    /// <summary>
     /// 给当前准星命中的物体套一圈白色轮廓。
     /// 根节点自己有网格就只描它（便签的底板包住纸面，描边落在整张纸外面）；
     /// 根节点是空物体（双开门）才把子网格都描上。
@@ -141,6 +150,16 @@ namespace Ib.Interaction
 
         private void Collect(Component target)
         {
+            if (target is IHighlightSource source && source.HighlightRoot != null && source.HighlightRoot.gameObject.activeInHierarchy)
+            {
+                source.HighlightRoot.GetComponentsInChildren(false, meshes);
+                source.HighlightRoot.GetComponentsInChildren(false, skins);
+                if (meshes.Count > 0 || skins.Count > 0)
+                {
+                    return;
+                }
+            }
+
             GameObject go = target.gameObject;
             go.GetComponents(meshes);
             go.GetComponents(skins);

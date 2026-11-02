@@ -384,7 +384,11 @@ namespace Ib.EditorTools
             // 檐口：中楣 + 压线 + 黄铜压边
             LocalBox(g, "Frieze", new Vector3(0f, 0.915f, 0f), new Vector3(size.x + 0.02f, 0.07f, size.z + 0.02f), Finishes.Trim);
             LocalBox(g, "Cornice", new Vector3(0f, 0.965f, 0f), new Vector3(size.x + 0.05f, 0.03f, size.z + 0.05f), Finishes.Trim);
-            LocalBox(g, "Top_Trim", new Vector3(0f, bodyH - 0.008f, 0f), new Vector3(size.x + 0.06f, 0.016f, size.z + 0.06f), Finishes.Brass);
+            // 黄铜压边：和 GlassCase 的 Plinth_Trim 一个道理，顶面必须低于柜身顶面 8 mm。
+            // 齐平时 2.9 × 0.95 m 的整片柜台面就是两片同向共面，玩家移动时木纹/黄铜交替闪。
+            const float topTrimH = 0.016f;
+            const float topTrimDrop = 0.008f;
+            LocalBox(g, "Top_Trim", new Vector3(0f, bodyH - topTrimDrop - topTrimH * 0.5f, 0f), new Vector3(size.x + 0.06f, topTrimH, size.z + 0.06f), Finishes.Brass);
 
             // 四角壁柱 + 黄铜柱头 / 柱础
             for (int sx = -1; sx <= 1; sx += 2)

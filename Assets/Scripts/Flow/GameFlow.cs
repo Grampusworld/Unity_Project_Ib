@@ -80,6 +80,9 @@ namespace Ib.Flow
         /// <summary>第 17 步：钥匙已经插在正门锁孔里（插上就不拔，真结局的前提）。</summary>
         public static bool KeyInserted { get; internal set; }
 
+        /// <summary>全家福厅门已用前台钥匙打开（2026-11-02）。不随检查点回滚，和 HasKey 一样。</summary>
+        public static bool FamilyDoorUnlocked { get; internal set; }
+
         private static readonly HashSet<HintId> shownHints = new HashSet<HintId>();
         private static bool menuRegistered;
         private static float pausedTimeScale = 1f;
@@ -243,6 +246,7 @@ namespace Ib.Flow
             HasStaffCard = false;
             HasKey = false;
             KeyInserted = false;
+            FamilyDoorUnlocked = false;
             Checkpoints.Reset();
             SceneTransitions.Reset();
             new GameObject("--- GameFlow ---").AddComponent<GameFlowBoot>();

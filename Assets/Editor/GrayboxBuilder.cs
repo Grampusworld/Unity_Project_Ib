@@ -290,6 +290,8 @@ namespace Ib.EditorTools
             SetupRearrange();
             // 正门锁孔、锁舌和钥匙模型（GrayboxBuilder.MainDoorKey.cs，会再存一次场景）
             SetupMainDoorKey();
+            // 11-02 第五批：黑屋画交互 / Lily 下移 / 脸部笔触法线 / 全家福厅门锁（GrayboxBuilder.Batch1102.cs，会再存一次场景）
+            SetupBatch1102();
 
             Debug.Log("[GrayboxBuilder] 完成：" + ScenePath);
         }
@@ -586,7 +588,9 @@ namespace Ib.EditorTools
             }
 
             AddProp(gallery, "Pickup_StudioTicket", 23.2f, y + 1.4f, 9.27f, 0.18f, 0.01f, 0.1f, p.Key);   // 展柜玻璃罩顶上
-            AddWallPanel(gallery, "Sketch_LilyLooksAtDoor", new Vector3(WestLineX + HalfWall, y + 1.4f, DutyDoorZ + 1.4f),
+            // 老大 11-02：Lily 肖像整体下移 0.4（localPosition.y 7.8 → 7.4；Props_Museum 下 1 倍坐标，世界坐标 ×1.4 即下移 0.56 m）。
+            // 画框、肖像层、射灯由 SetupBatch1102 的增量逻辑跟着挪；这里只改全量生成时的基准高度。
+            AddWallPanel(gallery, "Sketch_LilyLooksAtDoor", new Vector3(WestLineX + HalfWall, y + 1.0f, DutyDoorZ + 1.4f),
                 Vector3.right, 0.6f, 0.8f, p.Exhibit);
             // 停电（≥ PowerOut）时电磁锁门以靠墙一侧竖边为轴，向值班室（−X）内开 90°（Interfaces.md 场景切换与检查点）。
             // 合页边、门宽运行时从门板自己的包围盒算，这里不传参
@@ -596,6 +600,10 @@ namespace Ib.EditorTools
 
             // ---- 全家福厅：只有两件 ----
             Transform family = NewGroup(root, "FamilyRoom");
+            // 全家福厅门（2026-11-02）：东线门洞里的门板，关着挡人；猛关 / 钥匙开锁的逻辑在 FamilyRoomDoor
+            AddDoorPanel(family, "Door_Family_Locked", false, EastLineX,
+                    new Opening(FamilyDoorZ, FamilyDoorWidth, FamilyDoorHeight), y, p.Door)
+                .AddComponent<FamilyRoomDoor>();
             AddEasel(family, "FamilyPortrait_Easel", new Vector3(30.5f, y, FamilyDoorZ), -90f, p.Prop, p.Exhibit);
             // 第 6 步：PaintedGallery 时对全家福按 E 传回黑屋；碰撞体用画架子物体的（交互检测 GetComponentInParent）
             FindDeep(family, "FamilyPortrait_Easel").gameObject.AddComponent<FamilyPortraitExit>();
